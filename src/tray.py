@@ -6,6 +6,19 @@ from PIL import Image
 import pystray
 from pystray import MenuItem as item
 
+# Platform-specific imports
+IS_WINDOWS = sys.platform.startswith('win')
+IS_LINUX = sys.platform.startswith('linux')
+
+if IS_WINDOWS:
+    try:
+        import winshell
+        from win32com.client import Dispatch
+        WINDOWS_STARTUP_AVAILABLE = True
+    except ImportError:
+        WINDOWS_STARTUP_AVAILABLE = False
+        print("[WARNING] winshell or win32com not available - startup feature disabled")
+
 
 class SystemTray:
     """Manages the system tray icon and menu."""
@@ -50,14 +63,15 @@ class SystemTray:
     def _isInStartup(self) -> bool:
         """Check if app is in startup"""
         try:
-            if sys.platform.startswith('win'):
+            if IS_WINDOWS:
+                if not WINDOWS_STARTUP_AVAILABLE:
+                    return False
                 try:
-                    import winshell
                     startupFolder = Path(winshell.startup())
                     return (startupFolder / 'MindfulClipboard.lnk').exists()
                 except:
                     return False
-            elif sys.platform.startswith('linux'):
+            elif IS_LINUX:
                 autostartDir = Path.home() / '.config' / 'autostart'
                 return (autostartDir / 'mindfulclipboard.desktop').exists()
         except:
@@ -77,12 +91,9 @@ class SystemTray:
     def _addToStartup(self):
         """Add to startup"""
         try:
-            if sys.platform.startswith('win'):
-                try:
-                    import winshell
-                    from win32com.client import Dispatch
-                except ImportError:
-                    self.showNotification("Error", "Missing dependencies for auto-start")
+            if IS_WINDOWS:
+                if not WINDOWS_STARTUP_AVAILABLE:
+                    self.showNotification("Error", "Missing dependencies: pip install pywin32 winshell")
                     return
                 
                 startupFolder = Path(winshell.startup())
@@ -104,19 +115,19 @@ class SystemTray:
                     return
                 else:
                     # Running from source - use pythonw.exe to hide console
-                    pythonwPath = Path(sys.executable).parent / 'pythonw.exe'  # CHANGED
+                    pythonwPath = Path(sys.executable).parent / 'pythonw.exe'
                     
                     # Fall back to python.exe if pythonw.exe doesn't exist
                     if not pythonwPath.exists():
                         pythonwPath = Path(sys.executable)
                     
                     scriptPath = Path(__file__).parent.parent / 'main.py'
-                    scriptPath = scriptPath.resolve()  # CHANGED: added .resolve()
+                    scriptPath = scriptPath.resolve()
                     
                     shortcutPath = startupFolder / 'MindfulClipboard.lnk'
                     shell = Dispatch('WScript.Shell')
                     shortcut = shell.CreateShortCut(str(shortcutPath))
-                    shortcut.Targetpath = str(pythonwPath)  # CHANGED: use pythonw
+                    shortcut.Targetpath = str(pythonwPath)
                     shortcut.Arguments = f'"{scriptPath}"'
                     shortcut.WorkingDirectory = str(scriptPath.parent)
                     shortcut.WindowStyle = 7
@@ -124,7 +135,7 @@ class SystemTray:
                     
                     self.showNotification("Auto-Start", "Enabled for system startup")
             
-            elif sys.platform.startswith('linux'):
+            elif IS_LINUX:
                 autostartDir = Path.home() / '.config' / 'autostart'
                 autostartDir.mkdir(parents=True, exist_ok=True)
                 
@@ -160,19 +171,19 @@ StartupNotify=false
     def _removeFromStartup(self):
         """Remove from startup"""
         try:
-            if sys.platform.startswith('win'):
-                try:
-                    import winshell
-                    startupFolder = Path(winshell.startup())
-                    shortcutPath = startupFolder / 'MindfulClipboard.lnk'
+            if IS_WINDOWS:
+                if not WINDOWS_STARTUP_AVAILABLE:
+                    self.showNotification("Error", "Missing dependencies for startup feature")
+                    return
                     
-                    if shortcutPath.exists():
-                        shortcutPath.unlink()
-                        self.showNotification("Auto-Start", "Disabled from system startup")
-                except:
-                    self.showNotification("Error", "Could not disable auto-start")
+                startupFolder = Path(winshell.startup())
+                shortcutPath = startupFolder / 'MindfulClipboard.lnk'
+                
+                if shortcutPath.exists():
+                    shortcutPath.unlink()
+                    self.showNotification("Auto-Start", "Disabled from system startup")
                     
-            elif sys.platform.startswith('linux'):
+            elif IS_LINUX:
                 autostartDir = Path.home() / '.config' / 'autostart'
                 desktopFile = autostartDir / 'mindfulclipboard.desktop'
                 
@@ -193,15 +204,15 @@ StartupNotify=false
             menuItems.append(item(showText, self._onShowClick))
             menuItems.append(pystray.Menu.SEPARATOR)
         
-        # Auto-start toggle
-        startupText = self.i18n.t('tray_autostart') if self.i18n else 'Run on Startup'
-        menuItems.append(item(
-            startupText,
-            self._toggleStartup,
-            checked=lambda item: self._isInStartup()
-        ))
-        
-        menuItems.append(pystray.Menu.SEPARATOR)
+        # Auto-start toggle (only show if supported)
+        if IS_WINDOWS or IS_LINUX:
+            startupText = self.i18n.t('tray_autostart') if self.i18n else 'Run on Startup'
+            menuItems.append(item(
+                startupText,
+                self._toggleStartup,
+                checked=lambda item: self._isInStartup()
+            ))
+            menuItems.append(pystray.Menu.SEPARATOR)
         
         # About option
         aboutText = self.i18n.t('tray_about') if self.i18n else 'About'
@@ -227,16 +238,21 @@ StartupNotify=false
         try:
             root = tk.Tk()
             root.withdraw()
+            
+            # Platform-specific hotkey text
+            hotkey = "Win+V" if IS_WINDOWS else "Super+V"
+            
             messagebox.showinfo(
                 "MindfulClipboard",
-                "Smart Clipboard Manager\n\nPress Win+V to open clipboard history\n\nVersion 1.0"
+                f"Smart Clipboard Manager\n\nPress {hotkey} to open clipboard history\n\nVersion 1.0"
             )
             root.destroy()
         except Exception as e:
             # Fallback to notification if messagebox fails
+            hotkey = "Win+V" if IS_WINDOWS else "Super+V"
             self.showNotification(
                 "MindfulClipboard",
-                "Smart Clipboard Manager\nPress Win+V to open clipboard history"
+                f"Smart Clipboard Manager\nPress {hotkey} to open clipboard history"
             )
     
     def _onQuitClick(self, icon, item):
@@ -276,7 +292,7 @@ StartupNotify=false
         # Run in separate thread
         self.icon.run_detached()
         
-        print("✅ System tray icon started")
+        print("[OK] System tray icon started")
     
     def stop(self) -> None:
         """Stop the system tray icon."""
@@ -285,9 +301,9 @@ StartupNotify=false
             try:
                 self.icon.visible = False
                 self.icon.stop()
-                print("🛑 System tray icon stopped")
+                print("[STOP] System tray icon stopped")
             except Exception as e:
-                print(f"⚠️  Error stopping tray icon: {e}")
+                print(f"[WARNING] Error stopping tray icon: {e}")
     
     def updateTitle(self, title: str) -> None:
         """Update the tray icon title."""
@@ -300,4 +316,4 @@ StartupNotify=false
             try:
                 self.icon.notify(title=title, message=message)
             except Exception as e:
-                print(f"Failed to show notification: {e}")
+                print(f"[WARNING] Failed to show notification: {e}")

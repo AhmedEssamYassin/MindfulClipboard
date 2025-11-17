@@ -44,7 +44,7 @@ def addToStartup():
                 import winshell
                 from win32com.client import Dispatch
             except ImportError:
-                print("⚠️  Could not add to startup (missing dependencies)")
+                print("Could not add to startup (missing dependencies)")
                 return False
             
             startupFolder = Path(winshell.startup())
@@ -64,7 +64,7 @@ def addToStartup():
                 shortcut.WindowStyle = 7  # 7 = Minimized
                 shortcut.save()
                 
-                print(f"✅ Added to Windows startup")
+                print(f"Added to Windows startup")
                 return True
             else:
                 # Running from source - use pythonw.exe to hide console
@@ -86,7 +86,7 @@ def addToStartup():
                 shortcut.WindowStyle = 7  # Minimized
                 shortcut.save()
                 
-                print(f"✅ Added to Windows startup (using {'pythonw.exe' if pythonwPath.name == 'pythonw.exe' else 'python.exe'})")
+                print(f"Added to Windows startup (using {'pythonw.exe' if pythonwPath.name == 'pythonw.exe' else 'python.exe'})")
                 return True
             
         elif sys.platform.startswith('linux'):
@@ -119,11 +119,11 @@ StartupNotify=false
             desktopFile.write_text(content)
             desktopFile.chmod(0o755)
             
-            print(f"✅ Added to Linux autostart")
+            print(f"Added to Linux autostart")
             return True
             
     except Exception as e:
-        print(f"⚠️  Could not add to startup: {e}")
+        print(f"Could not add to startup: {e}")
         return False
     
     return False
@@ -138,7 +138,7 @@ def main():
     
     # Auto-add to startup on first run
     if not isInStartup():
-        print("📌 First run detected - adding to system startup...")
+        print("First run detected - adding to system startup...")
         addToStartup()
     
     # Create root window (hidden)
