@@ -1,0 +1,19 @@
+{
+    "app_name": "مدير الحافظة الذكي",
+    "window_title": "سجل الحافظة",
+    "search_placeholder": "ابحث في الحافظة...",
+    "click_outside_hint": "انقر بالخارج للإغلاق",
+    "image_label": "صورة",
+    "pin_tooltip": "انقر للتثبيت",
+    "unpin_tooltip": "انقر لإلغاء التثبيت",
+    "remove_tooltip": "انقر للحذف",
+    "startup_message": "تم تشغيل مدير الحافظة!",
+    "hotkey_message": "اضغط Windows + V لفتح سجل الحافظة",
+    "override_message": "(تم تجاوز حافظة Windows الافتراضية)",
+    "shutdown_message": "تم استعادة سلوك حافظة Windows الافتراضي.",
+    "tray_show": "فتح الحافظة",
+    "tray_about": "حول",
+    "tray_quit": "خروج",
+    "tray_autostart": "تشغيل عند بدء النظام",
+    "tray_started": "اضغط Win+V لفتح سجل الحافظة"
+}

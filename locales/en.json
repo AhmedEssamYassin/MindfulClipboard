@@ -1,0 +1,19 @@
+{
+    "app_name": "MindfulClipboard",
+    "window_title": "Clipboard History",
+    "search_placeholder": "Search clipboard...",
+    "click_outside_hint": "Click outside to close",
+    "image_label": "Image",
+    "pin_tooltip": "Click to pin",
+    "unpin_tooltip": "Click to unpin",
+    "remove_tooltip": "Click to remove",
+    "startup_message": "Clipboard Manager started!",
+    "hotkey_message": "Press Windows + V to open clipboard history",
+    "override_message": "(Windows default clipboard has been overridden)",
+    "shutdown_message": "Windows default clipboard behavior restored.",
+    "tray_show": "Open Clipboard",
+    "tray_about": "About",
+    "tray_quit": "Quit",
+    "tray_autostart": "Run on Startup",
+    "tray_started": "Press Win+V to open clipboard history"
+}
