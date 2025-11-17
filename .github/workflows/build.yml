@@ -87,7 +87,22 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-tk xclip libxcb-xinerama0
+          sudo apt-get install -y \
+            python3-tk \
+            xclip \
+            libx11-6 \
+            libxext6 \
+            libxrender1 \
+            libxinerama1 \
+            libxi6 \
+            libxrandr2 \
+            libxcursor1 \
+            libxtst6 \
+            libglib2.0-0 \
+            libsm6 \
+            libice6 \
+            libfontconfig1 \
+            libxkbcommon-x11-0
 
       - name: Install Python dependencies
         run: |
@@ -126,9 +141,15 @@ jobs:
             echo "[ERROR] Executable not found!"
             exit 1
           fi
-    
+
       - name: Make executable
         run: chmod +x dist/MindfulClipboard
+
+      - name: Test executable info
+        run: |
+          echo "[INFO] Checking executable:"
+          file dist/MindfulClipboard
+          ldd dist/MindfulClipboard || echo "[WARNING] ldd failed (expected for static builds)"
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -163,16 +184,3 @@ jobs:
           echo ""
           echo "Linux build:"
           ls -lh ./linux/
-
-      # Optional: Create a GitHub release with both artifacts
-      # Uncomment the following steps if you want automatic releases
-      
-      # - name: Create Release
-      #   uses: softprops/action-gh-release@v1
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   with:
-      #     files: |
-      #       ./windows/MindfulClipboard.exe
-      #       ./linux/MindfulClipboard
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
