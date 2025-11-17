@@ -126,6 +126,9 @@ jobs:
             echo "[ERROR] Executable not found!"
             exit 1
           fi
+    
+      - name: Make executable
+        run: chmod +x dist/MindfulClipboard
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
