@@ -2,6 +2,39 @@
 
 MindfulClipboard is a smart clipboard history manager for Windows and Linux, designed to replace the default `Win+V` functionality with a more powerful and feature-rich tool. It monitors your clipboard in the background, saves a history of your copied text and images, and provides a clean, searchable interface to access them.
 
+## System Design (UML Diagram)
+![UML Diagram](./docs/system%20design/UML%20Diagram.svg)
+
+## Project Structure
+
+```
+MindfulClipboard/
+├── main.py              # Main application entry point
+├── build.py             # Build script for creating executables
+├── requirements.txt     # Python dependencies
+│
+├── assets/              # Icons, images, and other static resources
+│   └── images/
+│       ├── icon.ico     # Windows icon
+│       └── icon.png     # Linux/tray icon
+│
+├── locales/             # Internationalization files
+│   ├── ar.json         # Arabic translations
+│   └── en.json         # English translations
+│
+└── src/
+    ├── manager.py       # The central controller; orchestrates all components
+    ├── ui.py            # All Tkinter UI logic and component creation
+    ├── history.py       # Manages the list of entries (adding, pinning, filtering)
+    ├── monitor.py       # Background thread for monitoring clipboard changes
+    ├── models.py        # Defines the ClipboardEntry data class
+    ├── utils.py         # Helper functions (hashing, image handling)
+    ├── i18n.py          # Internationalization handler
+    ├── tray.py          # System tray implementation
+    │
+    └── __pycache__/     # Compiled Python bytecode (auto-generated)
+```
+
 ## Features
 
 * **Replaces Default Hotkey**: Binds to `Win+V` to show the history popup, suppressing the default Windows clipboard.
@@ -21,6 +54,32 @@ MindfulClipboard is a smart clipboard history manager for Windows and Linux, des
 * **Background Monitoring**: Runs as a lightweight background thread to monitor clipboard changes without interrupting your workflow.
 * **Internationalization**: Automatically detects your system language and displays the interface in your preferred language (currently supports English and Arabic).
 * **Cross-Platform**: Works on both Windows and Linux!
+### Keyboard Shortcut
+
+Press `Win+V` (or `Super+V` on Linux) to open the clipboard history popup.
+
+### System Tray
+
+Right-click the system tray icon to:
+- **Open Clipboard**: Show the clipboard history
+- **About**: View application information
+- **Quit**: Exit the application
+
+## Supported Languages
+
+* **English** (en) - Default
+* **Arabic** (ar) - Automatically detected for Arabic systems
+
+The application automatically detects your system's default language and uses the appropriate translations. If your language is not yet supported, it falls back to English.
+
+### Adding a New Language
+
+To add support for a new language:
+
+1. Create a new JSON file in the `locales/` directory named with the language code (e.g., `fr.json` for French)
+2. Copy the structure from `en.json` and translate all values
+3. The application will automatically detect and use the new language on systems configured for that locale
+
 
 ## Installation
 
@@ -66,77 +125,6 @@ python build.py
 - **Executable**: Double-click the executable file
 
 The application will start in the background with a system tray icon.
-
-### Keyboard Shortcut
-
-Press `Win+V` (or `Super+V` on Linux) to open the clipboard history popup.
-
-### System Tray
-
-Right-click the system tray icon to:
-- **Open Clipboard**: Show the clipboard history
-- **About**: View application information
-- **Quit**: Exit the application
-
-## Auto-Start on System Boot
-
-To make MindfulClipboard start automatically when you log in:
-
-### Add to Startup
-```bash
-python setup_startup.py
-```
-
-### Remove from Startup
-```bash
-python setup_startup.py remove
-```
-
-## Supported Languages
-
-* **English** (en) - Default
-* **Arabic** (ar) - Automatically detected for Arabic systems
-
-The application automatically detects your system's default language and uses the appropriate translations. If your language is not yet supported, it falls back to English.
-
-### Adding a New Language
-
-To add support for a new language:
-
-1. Create a new JSON file in the `locales/` directory named with the language code (e.g., `fr.json` for French)
-2. Copy the structure from `en.json` and translate all values
-3. The application will automatically detect and use the new language on systems configured for that locale
-
-## Project Structure
-
-```
-MindfulClipboard/
-├── main.py              # Main application entry point
-├── build.py             # Build script for creating executables
-├── setup_startup.py     # Script to add/remove from system startup
-├── requirements.txt     # Python dependencies
-│
-├── assets/              # Icons, images, and other static resources
-│   └── images/
-│       ├── icon.ico     # Windows icon
-│       └── icon.png     # Linux/tray icon
-│
-├── locales/             # Internationalization files
-│   ├── ar.json         # Arabic translations
-│   └── en.json         # English translations
-│
-└── src/
-    ├── manager.py       # The central controller; orchestrates all components
-    ├── ui.py            # All Tkinter UI logic and component creation
-    ├── history.py       # Manages the list of entries (adding, pinning, filtering)
-    ├── monitor.py       # Background thread for monitoring clipboard changes
-    ├── models.py        # Defines the ClipboardEntry data class
-    ├── utils.py         # Helper functions (hashing, image handling)
-    ├── i18n.py          # Internationalization handler
-    ├── tray.py          # System tray implementation
-    │
-    └── __pycache__/     # Compiled Python bytecode (auto-generated)
-```
 
 ## Requirements
 
