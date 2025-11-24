@@ -1,7 +1,9 @@
+darkdetect==0.8.0
 keyboard==0.13.5
 Pillow==12.0.0
 PyInstaller==6.16.0
 pyperclip==1.11.0
 pystray==0.19.5
-pywin32==311; sys_platform == 'win32'
-winshell==0.6
+pywin32>=305; sys_platform == 'win32'
+winshell>=0.6; sys_platform == 'win32'
+python-xlib>=0.33; sys_platform == 'linux'
