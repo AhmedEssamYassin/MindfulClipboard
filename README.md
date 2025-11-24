@@ -2,39 +2,6 @@
 
 MindfulClipboard is a smart clipboard history manager for Windows and Linux, designed to replace the default `Win+V` functionality with a more powerful and feature-rich tool. It monitors your clipboard in the background, saves a history of your copied text and images, and provides a clean, searchable interface to access them.
 
-## System Design (UML Diagram)
-![UML Diagram](./docs/system%20design/UML%20Diagram.svg)
-
-## Project Structure
-
-```
-MindfulClipboard/
-├── main.py              # Main application entry point
-├── build.py             # Build script for creating executables
-├── requirements.txt     # Python dependencies
-│
-├── assets/              # Icons, images, and other static resources
-│   └── images/
-│       ├── icon.ico     # Windows icon
-│       └── icon.png     # Linux/tray icon
-│
-├── locales/             # Internationalization files
-│   ├── ar.json         # Arabic translations
-│   └── en.json         # English translations
-│
-└── src/
-    ├── manager.py       # The central controller; orchestrates all components
-    ├── ui.py            # All Tkinter UI logic and component creation
-    ├── history.py       # Manages the list of entries (adding, pinning, filtering)
-    ├── monitor.py       # Background thread for monitoring clipboard changes
-    ├── models.py        # Defines the ClipboardEntry data class
-    ├── utils.py         # Helper functions (hashing, image handling)
-    ├── i18n.py          # Internationalization handler
-    ├── tray.py          # System tray implementation
-    │
-    └── __pycache__/     # Compiled Python bytecode (auto-generated)
-```
-
 ## Features
 
 * **Replaces Default Hotkey**: Binds to `Win+V` to show the history popup, suppressing the default Windows clipboard.
@@ -80,6 +47,10 @@ To add support for a new language:
 2. Copy the structure from `en.json` and translate all values
 3. The application will automatically detect and use the new language on systems configured for that locale
 
+## Architectural view
+
+### System Design (UML Diagram)
+![UML Diagram](./docs/system%20design%20UML.svg)
 
 ## Installation
 
