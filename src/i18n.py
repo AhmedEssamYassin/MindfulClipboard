@@ -4,7 +4,6 @@ import locale
 import os
 from typing import Dict, Optional
 
-
 class I18n:
     """Handles internationalization for the application."""
     

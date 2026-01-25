@@ -273,7 +273,6 @@ class ClipboardUI:
     def _highlightWidget(self, widget, color):
         """Recursively highlight widget and children."""
         try:
-            # CHANGED: Added tk.Button to tuple so buttons inherit parent color
             if isinstance(widget, (tk.Frame, tk.Label, tk.Button)):
                 widget.config(bg=color)
             for child in widget.winfo_children():
@@ -339,7 +338,6 @@ class ClipboardUI:
         searchFrame = tk.Frame(parent, bg=theme['bg'])
         searchFrame.pack(fill='x', padx=5, pady=5)
         
-        # CHANGED: Added fg=theme['fg']
         searchIcon = tk.Label(searchFrame, text="🔍", bg=theme['bg'], fg=theme['fg'], font=('Arial', 12))
         searchIcon.pack(side='left', padx=(5, 2))
         
@@ -414,12 +412,7 @@ class ClipboardUI:
             return
         
         try:
-            if event.num == 4:  # Linux scroll up
-                self.canvas.yview_scroll(-1, "units")
-            elif event.num == 5:  # Linux scroll down
-                self.canvas.yview_scroll(1, "units")
-            else:  # Windows
-                self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         except:
             pass
     

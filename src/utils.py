@@ -2,16 +2,17 @@
 import hashlib
 import io
 import sys
+from pathlib import Path
 from typing import Union, Optional
 from PIL import Image, ImageGrab
+import win32clipboard
 
-# Platform-specific imports
-if sys.platform == 'win32':
-    import win32clipboard
-else:
-    # Linux: Use subprocess for xclip
-    import subprocess
-
+try:
+    import winshell
+    from win32com.client import Dispatch
+    STARTUP_AVAILABLE = True
+except ImportError:
+    STARTUP_AVAILABLE = False
 
 def calculateHash(content: Union[str, Image.Image]) -> str:
     """Calculate hash of content for duplicate detection."""
@@ -35,14 +36,6 @@ def getClipboardImage() -> Optional[Image.Image]:
 
 
 def copyImageToClipboard(image: Image.Image) -> None:
-    """Copy image to system clipboard (cross-platform)."""
-    if sys.platform == 'win32':
-        _copyImageToClipboardWindows(image)
-    else:
-        _copyImageToClipboardLinux(image)
-
-
-def _copyImageToClipboardWindows(image: Image.Image) -> None:
     """Copy image to Windows clipboard."""
     output = io.BytesIO()
     image.convert('RGB').save(output, 'BMP')
@@ -54,31 +47,61 @@ def _copyImageToClipboardWindows(image: Image.Image) -> None:
     win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
     win32clipboard.CloseClipboard()
 
-
-def _copyImageToClipboardLinux(image: Image.Image) -> None:
-    """Copy image to Linux clipboard using xclip."""
+def isInStartup() -> bool:
+    """Check if app is in startup folder."""
+    if not STARTUP_AVAILABLE: return False
     try:
-        # Save image to bytes
-        output = io.BytesIO()
-        image.save(output, format='PNG')
-        output.seek(0)
+        startupFolder = Path(winshell.startup())
+        return (startupFolder / 'MindfulClipboard.lnk').exists()
+    except:
+        return False
+
+def addToStartup() -> bool:
+    """Add application to Windows startup."""
+    if not STARTUP_AVAILABLE: return False
+    try:
+        startupFolder = Path(winshell.startup())
+        shortcutPath = startupFolder / 'MindfulClipboard.lnk'
         
-        # Use xclip to copy to clipboard
-        process = subprocess.Popen(
-            ['xclip', '-selection', 'clipboard', '-t', 'image/png'],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        process.communicate(input=output.getvalue())
-        output.close()
-        
-        if process.returncode != 0:
-            raise Exception("xclip failed")
+        # Determine paths based on how we are running (Frozen exe vs Python script)
+        if getattr(sys, 'frozen', False):
+            target = sys.executable
+            args = ""
+            cwd = str(Path(sys.executable).parent)
+            icon = sys.executable
+        else:
+            # Running from source
+            # Find pythonw.exe to run without console
+            pyDir = Path(sys.executable).parent
+            pythonw = pyDir / 'pythonw.exe'
+            target = str(pythonw if pythonw.exists() else sys.executable)
             
-    except FileNotFoundError:
-        print("Error: xclip not found. Install with: sudo apt-get install xclip")
-        raise
+            scriptPath = Path(__file__).parent.parent / 'main.py'
+            args = f'"{scriptPath.resolve()}"'
+            cwd = str(scriptPath.parent)
+            icon = sys.executable
+
+        shell = Dispatch('WScript.Shell')
+        shortcut = shell.CreateShortCut(str(shortcutPath))
+        shortcut.Targetpath = target
+        shortcut.Arguments = args
+        shortcut.WorkingDirectory = cwd
+        shortcut.IconLocation = icon
+        shortcut.WindowStyle = 7  # Minimized
+        shortcut.save()
+        return True
     except Exception as e:
-        print(f"Error copying image to clipboard on Linux: {e}")
-        raise
+        print(f"Startup Error: {e}")
+        return False
+
+def removeFromStartup() -> bool:
+    """Remove application from Windows startup."""
+    if not STARTUP_AVAILABLE: return False
+    try:
+        startupFolder = Path(winshell.startup())
+        shortcutPath = startupFolder / 'MindfulClipboard.lnk'
+        if shortcutPath.exists():
+            shortcutPath.unlink()
+        return True
+    except Exception:
+        return False

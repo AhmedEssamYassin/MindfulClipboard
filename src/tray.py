@@ -5,20 +5,8 @@ from typing import Callable, Optional
 from PIL import Image
 import pystray
 from pystray import MenuItem as item
-
-# Platform-specific imports
-IS_WINDOWS = sys.platform.startswith('win')
-IS_LINUX = sys.platform.startswith('linux')
-
-if IS_WINDOWS:
-    try:
-        import winshell
-        from win32com.client import Dispatch
-        WINDOWS_STARTUP_AVAILABLE = True
-    except ImportError:
-        WINDOWS_STARTUP_AVAILABLE = False
-        print("[WARNING] winshell or win32com not available - startup feature disabled")
-
+from .i18n import I18n
+from .utils import addToStartup, removeFromStartup, isInStartup
 
 class SystemTray:
     """Manages the system tray icon and menu."""
@@ -60,139 +48,28 @@ class SystemTray:
         
         return img
     
-    def _isInStartup(self) -> bool:
-        """Check if app is in startup"""
-        try:
-            if IS_WINDOWS:
-                if not WINDOWS_STARTUP_AVAILABLE:
-                    return False
-                try:
-                    startupFolder = Path(winshell.startup())
-                    return (startupFolder / 'MindfulClipboard.lnk').exists()
-                except:
-                    return False
-            elif IS_LINUX:
-                autostartDir = Path.home() / '.config' / 'autostart'
-                return (autostartDir / 'mindfulclipboard.desktop').exists()
-        except:
-            return False
-        return False
-    
     def _toggleStartup(self, icon, item):
         """Toggle auto-start on/off"""
-        if self._isInStartup():
-            self._removeFromStartup()
+        if isInStartup():
+            removeFromStartup()
+            self.showNotification(
+                title=self.i18n.t('app_name', 'MindfulClipboard'),
+                message="Auto-Start: Disabled from system startup"
+            )
         else:
-            self._addToStartup()
+            if addToStartup():
+                self.showNotification(
+                    title=self.i18n.t('app_name', 'MindfulClipboard'),
+                    message="Auto-Start: Enabled from system startup"
+                )
+            else:
+                self.showNotification(
+                    title=self.i18n.t('app_name', 'MindfulClipboard'),
+                    message="Error: Could not enable auto-start"
+                )
         
         # Recreate menu to update checkbox
         self.icon.menu = self._createMenu()
-    
-    def _addToStartup(self):
-        """Add to startup"""
-        try:
-            if IS_WINDOWS:
-                if not WINDOWS_STARTUP_AVAILABLE:
-                    self.showNotification("Error", "Missing dependencies: pip install pywin32 winshell")
-                    return
-                
-                startupFolder = Path(winshell.startup())
-                
-                if getattr(sys, 'frozen', False):
-                    # Running as compiled executable
-                    exePath = Path(sys.executable)
-                    
-                    shortcutPath = startupFolder / 'MindfulClipboard.lnk'
-                    shell = Dispatch('WScript.Shell')
-                    shortcut = shell.CreateShortCut(str(shortcutPath))
-                    shortcut.Targetpath = str(exePath)
-                    shortcut.WorkingDirectory = str(exePath.parent)
-                    shortcut.IconLocation = str(exePath)
-                    shortcut.WindowStyle = 7  # Minimized
-                    shortcut.save()
-                    
-                    self.showNotification("Auto-Start", "Enabled for system startup")
-                    return
-                else:
-                    # Running from source - use pythonw.exe to hide console
-                    pythonwPath = Path(sys.executable).parent / 'pythonw.exe'
-                    
-                    # Fall back to python.exe if pythonw.exe doesn't exist
-                    if not pythonwPath.exists():
-                        pythonwPath = Path(sys.executable)
-                    
-                    scriptPath = Path(__file__).parent.parent / 'main.py'
-                    scriptPath = scriptPath.resolve()
-                    
-                    shortcutPath = startupFolder / 'MindfulClipboard.lnk'
-                    shell = Dispatch('WScript.Shell')
-                    shortcut = shell.CreateShortCut(str(shortcutPath))
-                    shortcut.Targetpath = str(pythonwPath)
-                    shortcut.Arguments = f'"{scriptPath}"'
-                    shortcut.WorkingDirectory = str(scriptPath.parent)
-                    shortcut.WindowStyle = 7
-                    shortcut.save()
-                    
-                    self.showNotification("Auto-Start", "Enabled for system startup")
-            
-            elif IS_LINUX:
-                autostartDir = Path.home() / '.config' / 'autostart'
-                autostartDir.mkdir(parents=True, exist_ok=True)
-                
-                if getattr(sys, 'frozen', False):
-                    exePath = Path(sys.executable)
-                else:
-                    scriptPath = Path(__file__).parent.parent / 'main.py'
-                    exePath = f"python3 {scriptPath}"
-                
-                desktopFile = autostartDir / 'mindfulclipboard.desktop'
-                iconPath = Path(__file__).parent.parent / 'assets' / 'images' / 'icon.png'
-                
-                content = f"""[Desktop Entry]
-Type=Application
-Name=MindfulClipboard
-Comment=Smart Clipboard Manager
-Exec={exePath}
-Icon={iconPath if iconPath.exists() else ''}
-Terminal=false
-Categories=Utility;
-X-GNOME-Autostart-enabled=true
-StartupNotify=false
-"""
-                
-                desktopFile.write_text(content)
-                desktopFile.chmod(0o755)
-                
-                self.showNotification("Auto-Start", "Enabled for system startup")
-                
-        except Exception as e:
-            self.showNotification("Error", f"Could not enable auto-start: {e}")
-    
-    def _removeFromStartup(self):
-        """Remove from startup"""
-        try:
-            if IS_WINDOWS:
-                if not WINDOWS_STARTUP_AVAILABLE:
-                    self.showNotification("Error", "Missing dependencies for startup feature")
-                    return
-                    
-                startupFolder = Path(winshell.startup())
-                shortcutPath = startupFolder / 'MindfulClipboard.lnk'
-                
-                if shortcutPath.exists():
-                    shortcutPath.unlink()
-                    self.showNotification("Auto-Start", "Disabled from system startup")
-                    
-            elif IS_LINUX:
-                autostartDir = Path.home() / '.config' / 'autostart'
-                desktopFile = autostartDir / 'mindfulclipboard.desktop'
-                
-                if desktopFile.exists():
-                    desktopFile.unlink()
-                    self.showNotification("Auto-Start", "Disabled from system startup")
-                    
-        except Exception as e:
-            self.showNotification("Error", f"Could not disable auto-start: {e}")
     
     def _createMenu(self) -> tuple:
         """Create the tray menu."""
@@ -205,14 +82,13 @@ StartupNotify=false
             menuItems.append(pystray.Menu.SEPARATOR)
         
         # Auto-start toggle (only show if supported)
-        if IS_WINDOWS or IS_LINUX:
-            startupText = self.i18n.t('tray_autostart') if self.i18n else 'Run on Startup'
-            menuItems.append(item(
-                startupText,
-                self._toggleStartup,
-                checked=lambda item: self._isInStartup()
-            ))
-            menuItems.append(pystray.Menu.SEPARATOR)
+        startupText = self.i18n.t('tray_autostart') if self.i18n else 'Run on Startup'
+        menuItems.append(item(
+            startupText,
+            self._toggleStartup,
+            checked=lambda item: isInStartup()
+        ))
+        menuItems.append(pystray.Menu.SEPARATOR)
         
         # About option
         aboutText = self.i18n.t('tray_about') if self.i18n else 'About'
@@ -239,8 +115,7 @@ StartupNotify=false
             root = tk.Tk()
             root.withdraw()
             
-            # Platform-specific hotkey text
-            hotkey = "Win+V" if IS_WINDOWS else "Super+V"
+            hotkey = "Win+V"
             
             messagebox.showinfo(
                 "MindfulClipboard",
@@ -249,7 +124,7 @@ StartupNotify=false
             root.destroy()
         except Exception as e:
             # Fallback to notification if messagebox fails
-            hotkey = "Win+V" if IS_WINDOWS else "Super+V"
+            hotkey = "Win+V"
             self.showNotification(
                 "MindfulClipboard",
                 f"Smart Clipboard Manager\nPress {hotkey} to open clipboard history"

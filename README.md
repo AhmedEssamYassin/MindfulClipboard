@@ -1,6 +1,6 @@
 # MindfulClipboard
 
-MindfulClipboard is a smart clipboard history manager for Windows and Linux, designed to replace the default `Win+V` functionality with a more powerful and feature-rich tool. It monitors your clipboard in the background, saves a history of your copied text and images, and provides a clean, searchable interface to access them.
+MindfulClipboard is a smart clipboard history manager for Windows (currently), designed to replace the default `Win+V` functionality with a more powerful and feature-rich tool. It monitors your clipboard in the background, saves a history of your copied text and images, and provides a clean, searchable interface to access them.
 
 ## Features
 
@@ -20,10 +20,9 @@ MindfulClipboard is a smart clipboard history manager for Windows and Linux, des
    * Closes automatically on `<Escape>`, when focus is lost, or by clicking outside the window.
 * **Background Monitoring**: Runs as a lightweight background thread to monitor clipboard changes without interrupting your workflow.
 * **Internationalization**: Automatically detects your system language and displays the interface in your preferred language (currently supports English and Arabic).
-* **Cross-Platform**: Works on both Windows and Linux!
 ### Keyboard Shortcut
 
-Press `Win+V` (or `Super+V` on Linux) to open the clipboard history popup.
+Press `Win+V` to open the clipboard history popup.
 
 ### System Tray
 
@@ -86,7 +85,6 @@ python build.py
 
 3. The executable will be in the `dist/` folder:
    - **Windows**: `dist/MindfulClipboard.exe`
-   - **Linux**: `dist/MindfulClipboard`
 
 ## Usage
 
@@ -100,7 +98,7 @@ The application will start in the background with a system tray icon.
 ## Requirements
 
 * Python 3.7+
-* Windows 10/11 or Linux (Ubuntu, Fedora, etc.)
+* Windows 10/11
 * Required Python packages (see `requirements.txt`):
   * Pillow - Image processing
   * pyperclip - Clipboard operations
@@ -115,31 +113,14 @@ The application will start in the background with a system tray icon.
 - Uses `.ico` format for the application icon
 - Automatically suppresses the default Windows+V clipboard
 
-### Linux
-- Requires X11 or Wayland
-- May require additional permissions for keyboard shortcuts
-- Uses `.png` format for icons
-- On some distributions, you may need to install: `python3-tk` and `xclip`
-
 ## Troubleshooting
 
 ### Windows: Icon doesn't appear in build
 Make sure you have `assets/images/icon.ico` file. Convert PNG to ICO using online tools.
 
-### Linux: Keyboard shortcut doesn't work
-Run with sudo permissions or add your user to the `input` group:
-```bash
-sudo usermod -a -G input $USER
-```
-
 ### Application doesn't start on boot
 - **Windows**: Check the Startup folder: `shell:startup`
-- **Linux**: Check `~/.config/autostart/` directory
 
 ## License
 
 This project is open source and available under the MIT License.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.

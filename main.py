@@ -3,10 +3,12 @@ import tkinter as tk
 import sys
 import signal
 import os
+import time
 from pathlib import Path
 from src.manager import ClipboardManager
 from src.tray import SystemTray
 from src.i18n import initI18n
+from src.utils import addToStartup, isInStartup
 
 def resourcePath(relativePath):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -18,116 +20,6 @@ def resourcePath(relativePath):
         basePath = os.path.abspath(os.path.dirname(__file__))
     
     return os.path.join(basePath, relativePath)
-
-def isInStartup():
-    """Check if app is already in startup"""
-    try:
-        if sys.platform.startswith('win'):
-            try:
-                import winshell
-                startupFolder = Path(winshell.startup())
-                return (startupFolder / 'MindfulClipboard.lnk').exists()
-            except:
-                return False
-        elif sys.platform.startswith('linux'):
-            autostartDir = Path.home() / '.config' / 'autostart'
-            return (autostartDir / 'mindfulclipboard.desktop').exists()
-    except:
-        return False
-    return False
-
-def addToStartup():
-    """Automatically add app to system startup"""
-    try:
-        if sys.platform.startswith('win'):
-            try:
-                import winshell
-                from win32com.client import Dispatch
-            except ImportError:
-                print("Could not add to startup (missing dependencies)")
-                return False
-            
-            startupFolder = Path(winshell.startup())
-            
-            # Get executable path
-            if getattr(sys, 'frozen', False):
-                # Running as compiled executable
-                exePath = Path(sys.executable)
-                
-                # Create shortcut for executable
-                shortcutPath = startupFolder / 'MindfulClipboard.lnk'
-                shell = Dispatch('WScript.Shell')
-                shortcut = shell.CreateShortCut(str(shortcutPath))
-                shortcut.Targetpath = str(exePath)
-                shortcut.WorkingDirectory = str(exePath.parent)
-                shortcut.IconLocation = str(exePath)
-                shortcut.WindowStyle = 7  # 7 = Minimized
-                shortcut.save()
-                
-                print(f"Added to Windows startup")
-                return True
-            else:
-                # Running from source - use pythonw.exe to hide console
-                pythonwPath = Path(sys.executable).parent / 'pythonw.exe'
-                
-                # Fall back to python.exe if pythonw.exe doesn't exist
-                if not pythonwPath.exists():
-                    pythonwPath = Path(sys.executable)
-                
-                scriptPath = Path(__file__).resolve()  # CHANGED: added .resolve()
-                
-                # Create shortcut to run Python script
-                shortcutPath = startupFolder / 'MindfulClipboard.lnk'
-                shell = Dispatch('WScript.Shell')
-                shortcut = shell.CreateShortCut(str(shortcutPath))
-                shortcut.Targetpath = str(pythonwPath)  # CHANGED: use pythonw
-                shortcut.Arguments = f'"{scriptPath}"'
-                shortcut.WorkingDirectory = str(scriptPath.parent)
-                shortcut.WindowStyle = 7  # Minimized
-                shortcut.save()
-                
-                print(f"Added to Windows startup (using {'pythonw.exe' if pythonwPath.name == 'pythonw.exe' else 'python.exe'})")
-                return True
-            
-        elif sys.platform.startswith('linux'):
-            autostartDir = Path.home() / '.config' / 'autostart'
-            autostartDir.mkdir(parents=True, exist_ok=True)
-            
-            # Get executable path
-            if getattr(sys, 'frozen', False):
-                exePath = Path(sys.executable)
-            else:
-                scriptPath = Path(__file__).resolve()  # CHANGED: added .resolve()
-                exePath = f"python3 {scriptPath}"
-            
-            # Create .desktop file
-            desktopFile = autostartDir / 'mindfulclipboard.desktop'
-            iconPath = Path(__file__).parent / 'assets' / 'images' / 'icon.png'
-            
-            content = f"""[Desktop Entry]
-Type=Application
-Name=MindfulClipboard
-Comment=Smart Clipboard Manager
-Exec={exePath}
-Icon={iconPath if iconPath.exists() else ''}
-Terminal=false
-Categories=Utility;
-X-GNOME-Autostart-enabled=true
-StartupNotify=false
-"""
-            
-            desktopFile.write_text(content)
-            desktopFile.chmod(0o755)
-            
-            print(f"Added to Linux autostart")
-            return True
-            
-    except Exception as e:
-        print(f"Could not add to startup: {e}")
-        return False
-    
-    return False
-
 
 def main():
     """Initialize and run the clipboard manager."""
@@ -184,10 +76,12 @@ def main():
         i18n=i18n,
         assetsDir=assetsPath  
     )
-    tray.start()
-    
     # Start clipboard manager
     manager.start()
+
+    tray.start()
+    
+    time.sleep(1.5)
     
     # Show notification
     tray.showNotification(
@@ -206,7 +100,7 @@ def main():
     def signalHandler(sig, frame):
         nonlocal isQuitting
         if not isQuitting:
-            print("\n⚠️  Shutting down...")
+            print("\n Shutting down...")
             onQuit()
     
     signal.signal(signal.SIGINT, signalHandler)

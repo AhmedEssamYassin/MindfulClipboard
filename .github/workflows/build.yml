@@ -54,9 +54,9 @@ jobs:
 
       - name: Verify build output
         run: |
-          if (Test-Path "dist/MindfulClipboard.exe") {
+          if (Test-Path "dist/MindfulClipboard/MindfulClipboard.exe") {
             Write-Host "[SUCCESS] Executable built successfully"
-            Get-Item dist/MindfulClipboard.exe | Select-Object Name, Length, LastWriteTime
+            Get-Item dist/MindfulClipboard/MindfulClipboard.exe | Select-Object Name, Length, LastWriteTime
           } else {
             Write-Host "[ERROR] Executable not found!"
             exit 1
@@ -67,88 +67,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MindfulClipboard-Windows
-          path: dist/MindfulClipboard.exe
-          if-no-files-found: error
-
-  build-linux:
-    name: Build for Linux
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            python3-tk \
-            xclip \
-            libxcb-xinerama0
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Verify assets folder
-        run: |
-          if [ -d "assets" ]; then
-            echo "[OK] Assets folder found"
-            find assets -type f
-          else
-            echo "[ERROR] Assets folder not found!"
-            exit 1
-          fi
-
-      - name: Verify locales folder
-        run: |
-          if [ -d "locales" ]; then
-            echo "[OK] Locales folder found"
-            find locales -type f
-          else
-            echo "[ERROR] Locales folder not found!"
-            exit 1
-          fi
-
-      - name: Run PyInstaller build
-        run: python build.py
-
-      - name: Verify build output
-        run: |
-          if [ -f "dist/MindfulClipboard" ]; then
-            echo "[SUCCESS] Executable built successfully"
-            ls -lh dist/MindfulClipboard
-          else
-            echo "[ERROR] Executable not found!"
-            exit 1
-          fi
-
-      - name: Make executable
-        run: chmod +x dist/MindfulClipboard
-
-      - name: Test executable info
-        run: |
-          echo "[INFO] Checking executable:"
-          file dist/MindfulClipboard
-          ldd dist/MindfulClipboard || echo "[WARNING] ldd failed (expected for static builds)"
-
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: MindfulClipboard-Linux
-          path: dist/MindfulClipboard
+          path: dist/MindfulClipboard/
           if-no-files-found: error
 
   release:
     name: Create Release
-    needs: [build-windows, build-linux]
+    needs: [build-windows]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -159,16 +83,7 @@ jobs:
           name: MindfulClipboard-Windows
           path: ./windows
 
-      - name: Download Linux artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: MindfulClipboard-Linux
-          path: ./linux
-
       - name: Display downloaded files
         run: |
           echo "Windows build:"
           ls -lh ./windows/
-          echo ""
-          echo "Linux build:"
-          ls -lh ./linux/
