@@ -50,7 +50,8 @@ jobs:
         shell: pwsh
 
       - name: Run PyInstaller build
-        run: python build.py
+        run: echo "2" | python build.py
+        shell: pwsh
 
       - name: Verify build output
         run: |
