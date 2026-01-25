@@ -159,27 +159,12 @@ class ClipboardManager:
         # 2. Scrub the PATH variable
         # PyInstaller adds its temp folder to PATH. We must strip it out
         # to ensure Explorer loads system DLLs, not our bundled ones.
-        badPaths = []
-        if getattr(sys, 'frozen', False):
-            # The folder containing your .exe (causes DLL conflicts)
-            badPaths.append(os.path.dirname(sys.executable))
-        
         if hasattr(sys, '_MEIPASS'):
-            # The PyInstaller temp folder
-            badPaths.append(sys._MEIPASS)
-
-        # 3. Clean the PATH variable
-        # We assume paths are case-insensitive on Windows
-        currentPath = env.get('PATH', '')
-        pathParts = currentPath.split(os.pathsep)
-        
-        cleanParts = []
-        for p in pathParts:
-            # Keep path if it DOES NOT contain a bad path
-            if not any(bad.lower() in p.lower() for bad in badPaths):
-                cleanParts.append(p)
-        
-        env['PATH'] = os.pathsep.join(cleanParts)
+            temp_path = sys._MEIPASS
+            current_path = env.get('PATH', '')
+            # Filter out any path segment that matches the temp path
+            clean_parts = [p for p in current_path.split(os.pathsep) if temp_path not in p]
+            env['PATH'] = os.pathsep.join(clean_parts)
         
         # 3. Ensure SystemRoot is present (Windows needs this)
         if 'SystemRoot' not in env:
