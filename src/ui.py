@@ -161,8 +161,8 @@ class ClipboardUI:
         
         # Bind events
         self.popupWindow.bind('<Escape>', lambda e: self.closePopup())
-        self.popupWindow.bind('<FocusOut>', lambda e: self.closePopup())
-        
+        self.popupWindow.bind('<FocusOut>', self._onFocusOut)
+
         # --- FOCUS HANDLING ---
         # Update window to ensure it's fully created
         self.popupWindow.update_idletasks()
@@ -205,6 +205,18 @@ class ClipboardUI:
         # Ensure popup stays on top and binds outside click
         self.root.after(100, self._bindOutsideClick)
     
+    def _onFocusOut(self, event):
+        """Handle focus out event."""
+        # Get the widget that currently has focus
+        focused_widget = self.popupWindow.focus_get()
+        
+        # If focus is still within the popup window (or its children), ignore the event
+        if focused_widget and str(focused_widget).startswith(str(self.popupWindow)):
+            return
+            
+        # Otherwise, close the popup
+        self.closePopup()
+        
     def _navigateUp(self, event=None):
         """Navigate to previous entry."""
         if self.selectedIndex > 0:
