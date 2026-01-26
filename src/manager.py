@@ -1,30 +1,19 @@
 """Main clipboard manager orchestrating all components."""
 import tkinter as tk
+from tkinter import messagebox
 import pyperclip
 import keyboard
 import winreg
-import os
-import sys
-import time
-import subprocess
 import atexit
-from typing import Union, List
+from typing import Union
 from PIL import Image
 
 from .models import ClipboardEntry
 from .history import ClipboardHistory
 from .monitor import ClipboardMonitor
 from .ui import ClipboardUI
-from .utils import copyImageToClipboard
+from .utils import copyImageToClipboard, addToStartup, removeFromStartup
 from .i18n import getI18n
-
-# COM imports for folder preservation
-try:
-    import pythoncom  # Required for threading safety with COM
-    from win32com.client import Dispatch
-    COM_AVAILABLE = True
-except ImportError:
-    COM_AVAILABLE = False
 
 class ClipboardManager:
     """Main clipboard manager coordinating all components."""
@@ -134,96 +123,13 @@ class ClipboardManager:
         except:
             return 1
 
-    def _forceSystemReload(self):
-        """Force clipboard service to read new Registry settings."""
-        try:
-            subprocess.run(["taskkill", "/F", "/IM", "cbdhsvc.exe"], 
-                         capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
-        except:
-            pass
-
-    # --- Environment Sanitation (Crucial for PyInstaller) ---
-
-    def _getCleanEnv(self):
-        """
-        Creates a 'clean room' environment for Explorer.
-        Removes all PyInstaller variables that cause corruption/DLL conflicts.
-        """
-        env = os.environ.copy()
-        
-        # 1. Remove dangerous PyInstaller keys
-        dirtyKeys = ['_MEIPASS', '_MEIPASS2', 'PYTHONPATH', 'LD_LIBRARY_PATH']
-        for key in dirtyKeys:
-            env.pop(key, None)
-            
-        # 2. Scrub the PATH variable
-        # PyInstaller adds its temp folder to PATH. We must strip it out
-        # to ensure Explorer loads system DLLs, not our bundled ones.
-        if hasattr(sys, '_MEIPASS'):
-            temp_path = sys._MEIPASS
-            current_path = env.get('PATH', '')
-            # Filter out any path segment that matches the temp path
-            clean_parts = [p for p in current_path.split(os.pathsep) if temp_path not in p]
-            env['PATH'] = os.pathsep.join(clean_parts)
-        
-        # 3. Ensure SystemRoot is present (Windows needs this)
-        if 'SystemRoot' not in env:
-            env['SystemRoot'] = r'C:\Windows'
-            
-        return env
-
-    # --- Explorer & Folder Management ---
-
-    def _getOpenExplorerWindows(self) -> List[str]:
-        """Capture all currently open folder paths using COM."""
-        paths = []
-        if not COM_AVAILABLE:
-            return paths
-        
-        try:
-            pythoncom.CoInitialize()
-            
-            shell = Dispatch("Shell.Application")
-            for window in shell.Windows():
-                # Detect File Explorer windows (ignore IE/Edge)
-                if "File Explorer" in window.FullName or "explorer.exe" in window.FullName.lower():
-                    try:
-                        path = window.LocationURL
-                        if path.startswith("file:///"):
-                            # Convert URL to Windows Path
-                            path = path.replace("file:///", "").replace("/", "\\")
-                            path = path.replace("%20", " ")
-                            paths.append(path)
-                    except:
-                        pass
-        except Exception as e:
-            print(f"Could not save explorer windows: {e}")
-        return paths
-
-    def _restoreExplorerWindows(self, paths: List[str]):
-        """Restores folders using the CLEAN environment."""
-        if not paths: return
-        print(f"[SYSTEM] Restoring {len(paths)} folder(s)...")
-        
-        cleanEnv = self._getCleanEnv()
-        # Explicitly point to the real Explorer executable
-        explorerPath = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'explorer.exe')
-        
-        for path in paths:
-            try:
-                # Open folder as a detached process with clean environment
-                # cwd="C:\" ensures we don't accidentally load DLLs from App dir
-                subprocess.Popen([explorerPath, path], env=cleanEnv, cwd="C:\\")
-            except:
-                pass
-
     def _modifyNativeHotkey(self, disable: bool) -> None:
         """
         Edits 'DisabledHotkeys' in Registry.
-        Restarts Explorer ONLY if a change was actually made.
+        Shows a popup to the user if a change was made, requesting a restart.
         """
         keyPath = r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-        restartNeeded = False
+        changeMade = False
         
         try:
             try:
@@ -241,55 +147,31 @@ class ClipboardManager:
                 # Add 'V' if not present
                 if "V" not in currentVal:
                     newVal = currentVal + "V"
-                    restartNeeded = True
+                    changeMade = True
                     print("[SYSTEM] Disabling Native Win+V in Registry...")
             else:
                 # Remove 'V' if present
                 if "V" in currentVal:
                     newVal = currentVal.replace("V", "")
-                    restartNeeded = True
+                    changeMade = True
                     print("[SYSTEM] Restoring Native Win+V in Registry...")
 
-            if restartNeeded:
+            if changeMade:
                 winreg.SetValueEx(key, "DisabledHotkeys", 0, winreg.REG_SZ, newVal)
+                
+                # Show Prompt
+                action = "disabled" if disable else "restored"
+                messagebox.showinfo(
+                    "System Restart Required",
+                    f"The native Windows 'Win+V' hotkey has been {action} in the Registry.\n\n"
+                    "For this change to take full effect, you must manually restart "
+                    "Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In."
+                )
             
             winreg.CloseKey(key)
 
-            if restartNeeded:
-                self._restartExplorer()
-                
         except Exception as e:
             print(f"[WARNING] Registry access failed: {e}")
-
-    def _restartExplorer(self) -> None:
-        """
-        Safely restarts Windows Explorer.
-        Handles: Saving folders -> Killing -> Cleaning Env -> Starting -> Restoring folders.
-        """
-        print("[SYSTEM] Restarting Explorer... (Please wait)")
-        
-        # 1. Save Open Folders
-        saved_paths = self._getOpenExplorerWindows()
-        
-        # 2. Kill Explorer
-        subprocess.run(["taskkill", "/f", "/im", "explorer.exe"], 
-                       creationflags=subprocess.CREATE_NO_WINDOW)
-        time.sleep(1) # Allow process to die
-        
-        # 3. Start Explorer
-        cleanEnv = self._getCleanEnv()
-        explorerPath = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'explorer.exe')
-        
-        # launch explorer with cleaned environment and safe CWD
-        subprocess.Popen([explorerPath], env=cleanEnv, cwd="C:\\")
-        
-        # 4. Wait for Shell to load
-        print("[SYSTEM] Waiting for Desktop Shell to reload...")
-        time.sleep(4) 
-        
-        # 5. Restore Folders
-        self._restoreExplorerWindows(saved_paths)
-        print("[SYSTEM] Desktop Shell Ready.")
 
     # --- Lifecycle Methods ---
 
@@ -300,19 +182,21 @@ class ClipboardManager:
         # 1. Disable Windows Internal History Service
         self.originalHistoryState = self._getSystemHistoryState()
         self._setSystemHistory(False)
-        self._forceSystemReload()
 
-        # 2. Disable Native Hotkey via Registry (Might restart explorer)
+        # 2. Disable Native Hotkey via Registry (Prompts user if changed)
         self._modifyNativeHotkey(disable=True)
 
         # 3. Register our Hotkey
-        # suppress=False is SAFE now because Windows is ignoring Win+V natively.
-        # This keeps other hotkeys starting with `Win` working perfectly.
+        # suppress=False: We let the event pass through.
+        # Once the user reboots, Windows will ignore it (due to Registry),
+        # but our app will still catch it.
         try:
             keyboard.add_hotkey('win+v', self.showPopup, suppress=False)
             print("Registered Win+V")
         except Exception as e:
             print(f"Critical: Failed to hook Win+V: {e}")
+
+        addToStartup()
 
         self.root.after(100, self._checkPopupFlag)
 
@@ -326,13 +210,13 @@ class ClipboardManager:
         except:
             pass
             
-        # 1. Restore Native Hotkey (Might restart explorer)
+        # 1. Restore Native Hotkey (Prompts user if changed)
         self._modifyNativeHotkey(disable=False)
 
         # 2. Restore History Service
         if self.originalHistoryState == 1:
             self._setSystemHistory(True)
-            self._forceSystemReload()
-            
+        # 3. Turning off startup open
+        removeFromStartup()
         # Unregister atexit so it doesn't run twice
         atexit.unregister(self.stop)
