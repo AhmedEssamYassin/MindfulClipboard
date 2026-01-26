@@ -159,14 +159,24 @@ class ClipboardManager:
             if changeMade:
                 winreg.SetValueEx(key, "DisabledHotkeys", 0, winreg.REG_SZ, newVal)
                 
-                # Show Prompt
+                # 1. Save current topmost state (in case the UI was pinned)
+                wasTopmost = self.root.attributes('-topmost')
+                
+                # 2. Force window to top so the dialog rides on top of it
+                self.root.attributes('-topmost', True)
+                self.root.update_idletasks()
+
+                # 3. Show Prompt
                 action = "disabled" if disable else "restored"
                 messagebox.showinfo(
                     "System Restart Required",
                     f"The native Windows 'Win+V' hotkey has been {action} in the Registry.\n\n"
                     "For this change to take full effect, you must manually restart "
-                    "Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In."
+                    "Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In.",
+                    parent=self.root
                 )
+                # 4. Restore previous state
+                self.root.attributes('-topmost', wasTopmost)
             
             winreg.CloseKey(key)
 
