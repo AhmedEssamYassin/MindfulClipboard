@@ -3,6 +3,9 @@ import shutil
 import sys
 import os
 from pathlib import Path
+import update_deps
+
+update_deps.updateAllDeps()
 
 # --- Project Configuration ---
 APP_NAME = "MindfulClipboard"
@@ -160,7 +163,7 @@ def main():
                     createSpecFile()
                 
                 print("\n" + "=" * 60)
-                print("🎉 Build process completed successfully!")
+                print("Build process completed successfully!")
                 print("=" * 60)
                 break # Exit after successful build
             else:
