@@ -105,8 +105,8 @@ class ClipboardUI:
         theme = self.getTheme()
         
         # Popup dimensions
-        popup_width = 500
-        popup_height = 500
+        popup_width = 360
+        popup_height = 450
         
         # Get screen dimensions
         screen_width = self.root.winfo_screenwidth()
