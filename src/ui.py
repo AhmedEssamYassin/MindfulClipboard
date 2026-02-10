@@ -386,45 +386,124 @@ class ClipboardUI:
         mainFrame = tk.Frame(parent, bg=theme['bg'])
         mainFrame.pack(fill='both', expand=True)
         
+        style = ttk.Style()
+        style.theme_use('clam')
+        
+        style.layout("Vertical.TScrollbar", 
+                     [('Vertical.Scrollbar.trough',
+                       {'children': [('Vertical.Scrollbar.thumb', 
+                                      {'expand': '1', 'sticky': 'nswe'})],
+                        'sticky': 'nswe'})])
+        
+        # Configure colors for a minimal "floating" look
+        if self.isDarkMode:
+            style.configure("Vertical.TScrollbar",
+                        background='#424242',        # Subtle Grey Thumb
+                        troughcolor=theme['bg'],     # Invisible Trough (matches bg)
+                        bordercolor=theme['bg'],
+                        lightcolor='#424242',
+                        darkcolor='#424242',
+                        borderwidth=0)
+            style.map("Vertical.TScrollbar",
+                      background=[('active', '#505050')]) # Lighter on hover
+        else:
+            style.configure("Vertical.TScrollbar",
+                        background='#CCCCCC',        # Standard Light Grey
+                        troughcolor=theme['bg'],
+                        bordercolor=theme['bg'],
+                        lightcolor='#CCCCCC',
+                        darkcolor='#CCCCCC',
+                        borderwidth=0)
+            style.map("Vertical.TScrollbar",
+                      background=[('active', '#999999')])
+
         self.canvas = tk.Canvas(mainFrame, bg=theme['bg'], highlightthickness=0)
-        scrollbar = ttk.Scrollbar(mainFrame, orient='vertical', command=self.canvas.yview)
+        
+        # Create scrollbar (keep reference to toggle visibility)
+        self.scrollbar = ttk.Scrollbar(mainFrame, orient='vertical', 
+                                  command=self.canvas.yview, 
+                                  style="Vertical.TScrollbar")
+        
         self.scrollableFrame = tk.Frame(self.canvas, bg=theme['bg'])
         
-        self.scrollableFrame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        )
+        # Create window
+        self.canvasFrame = self.canvas.create_window((0, 0), window=self.scrollableFrame, anchor='nw')
         
-        self.canvas.create_window((0, 0), window=self.scrollableFrame, anchor='nw')
-        self.canvas.configure(yscrollcommand=scrollbar.set)
+        # --- Auto-Hide Logic ---
+        def checkScrollbarNeeded(event=None):
+            # Calculate heights
+            self.scrollableFrame.update_idletasks()
+            bbox = self.canvas.bbox("all")
+            if not bbox: return
+            
+            content_height = bbox[3]
+            canvas_height = self.canvas.winfo_height()
+            
+            # Update scrollregion
+            self.canvas.configure(scrollregion=bbox)
+            
+            # Toggle Scrollbar Visibility
+            if content_height > canvas_height:
+                if not self.scrollbar.winfo_ismapped():
+                    self.scrollbar.pack(side='right', fill='y')
+            else:
+                if self.scrollbar.winfo_ismapped():
+                    self.scrollbar.pack_forget()
+
+        # Bind configuration events to triggers checks
+        self.scrollableFrame.bind("<Configure>", checkScrollbarNeeded)
         
+        def onCanvasConfigure(event):
+            # Ensure content frame fills canvas width
+            self.canvas.itemconfig(self.canvasFrame, width=event.width)
+            checkScrollbarNeeded()
+        
+        self.canvas.bind("<Configure>", onCanvasConfigure)
+        
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        # Initial pack (will be hidden by the check if not needed)
+        self.scrollbar.pack(side='right', fill='y')
         self.canvas.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
         
-        # Bind mouse wheel scrolling
-        self.canvas.bind_all("<MouseWheel>", self._onMouseWheel)
-        self.canvas.bind_all("<Button-4>", self._onMouseWheel)
-        self.canvas.bind_all("<Button-5>", self._onMouseWheel)
-    
+        # Bind mouse wheel
+        self.canvas.bind("<MouseWheel>", self._onMouseWheel)
+        self.canvas.bind("<Button-4>", self._onMouseWheel)
+        self.canvas.bind("<Button-5>", self._onMouseWheel)
+        
+        self.scrollableFrame.bind("<MouseWheel>", self._onMouseWheel)
+        self.scrollableFrame.bind("<Button-4>", self._onMouseWheel)
+        self.scrollableFrame.bind("<Button-5>", self._onMouseWheel)
+        
+        def bindMousewheel(event):
+            self.canvas.bind_all("<MouseWheel>", self._onMouseWheel)
+            self.canvas.bind_all("<Button-4>", self._onMouseWheel)
+            self.canvas.bind_all("<Button-5>", self._onMouseWheel)
+        
+        def unbindMousewheel(event):
+            self.canvas.unbind_all("<MouseWheel>")
+            self.canvas.unbind_all("<Button-4>")
+            self.canvas.unbind_all("<Button-5>")
+        
+        self.canvas.bind("<Enter>", bindMousewheel)
+        self.canvas.bind("<Leave>", unbindMousewheel)
+
     def _onMouseWheel(self, event):
         """Handle mouse wheel scrolling."""
         if not self.canvas:
             return
         
         try:
-            self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        except:
+            # For Windows and MacOS
+            if event.num == 4 or event.delta > 0:
+                self.canvas.yview_scroll(-1, "units")
+            elif event.num == 5 or event.delta < 0:
+                self.canvas.yview_scroll(1, "units")
+            else:
+                # Standard mouse wheel
+                self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        except Exception as e:
             pass
-    
-    def _safeRefresh(self) -> None:
-        """Safely refresh display, checking if widgets still exist."""
-        if self.popupWindow and self.scrollableFrame:
-            try:
-                if self.popupWindow.winfo_exists() and self.scrollableFrame.winfo_exists():
-                    self.selectedIndex = 0  # Reset selection on search
-                    self.onRefresh()
-            except:
-                pass
 
     def refreshDisplay(self, entries: list) -> None:
         """Refresh the display with given entries."""
@@ -449,9 +528,24 @@ class ClipboardUI:
             frame = self._createHistoryItem(self.scrollableFrame, entry, idx)
             self.itemFrames.append(frame)
         
+        # Force update to recalculate scroll region
+        self.scrollableFrame.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        
         # Update selection highlight
         self._updateSelection()
     
+    def _safeRefresh(self) -> None:
+        """Safely refresh display, checking if widgets still exist."""
+        if self.popupWindow and self.scrollableFrame:
+            try:
+                if self.popupWindow.winfo_exists() and self.scrollableFrame.winfo_exists():
+                    self.selectedIndex = 0  # Reset selection on search
+                    self.onRefresh()
+            except:
+                pass
+
+       
     def _createHistoryItem(self, parent: tk.Frame, entry: ClipboardEntry, idx: int) -> tk.Frame:
         """Create a history item widget."""
         theme = self.getTheme()
@@ -515,7 +609,7 @@ class ClipboardUI:
         pinIndicator = "📌 " if entry.isPinned else ""
         textLabel = tk.Label(parent, text=f"{pinIndicator}{preview}", 
                             bg=theme['bg'], fg=theme['fg'], anchor='w', justify='left', 
-                            font=('Arial', 9), wraplength=350)
+                            font=('Arial', 9), wraplength=250)
         textLabel.pack(side='left', fill='x', expand=True, padx=10, pady=8)
         
         # Bind hover for text preview
@@ -743,9 +837,9 @@ class ClipboardUI:
     def closePopup(self) -> None:
         """Close the history popup."""
         self.root.unbind_all('<Button-1>')
-        self.root.unbind_all('<MouseWheel>')
-        self.root.unbind_all('<Button-4>')
-        self.root.unbind_all('<Button-5>')
+        # self.root.unbind_all('<MouseWheel>')
+        # self.root.unbind_all('<Button-4>')
+        # self.root.unbind_all('<Button-5>')
         
         if self.searchVar and self.searchTraceId:
             try:
