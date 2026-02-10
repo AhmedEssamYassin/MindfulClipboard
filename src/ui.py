@@ -553,7 +553,10 @@ class ClipboardUI:
         itemFrame = tk.Frame(parent, bg=theme['bg'], relief='solid', borderwidth=0)
         itemFrame.pack(fill='x', padx=5, pady=3)
         
-        # Content frame (left side)
+        # Packing this first ensures the buttons always stick to the right edge.
+        actionFrame = self._createActionButtons(itemFrame, entry)
+        
+        # This frame will take up all the remaining space to the left.
         contentFrame = tk.Frame(itemFrame, bg=theme['bg'])
         contentFrame.pack(side='left', fill='both', expand=True)
         
@@ -562,9 +565,6 @@ class ClipboardUI:
             self._createImageItem(contentFrame, entry, itemFrame)
         else:
             self._createTextItem(contentFrame, entry)
-        
-        # Action buttons frame (right side)
-        actionFrame = self._createActionButtons(itemFrame, entry)
         
         # Click to copy and paste
         self._bindCopyPaste(contentFrame, entry, idx)
@@ -607,10 +607,16 @@ class ClipboardUI:
         preview = preview.replace('\n', ' ')
         
         pinIndicator = "📌 " if entry.isPinned else ""
+        
         textLabel = tk.Label(parent, text=f"{pinIndicator}{preview}", 
                             bg=theme['bg'], fg=theme['fg'], anchor='w', justify='left', 
-                            font=('Arial', 9), wraplength=250)
+                            font=('Arial', 9))
+        
         textLabel.pack(side='left', fill='x', expand=True, padx=10, pady=8)
+        
+        # Bind the <Configure> event. 
+        # This updates the wrap limit whenever the label changes size (e.g. window resize).
+        textLabel.bind('<Configure>', lambda e: textLabel.config(wraplength=e.width))
         
         # Bind hover for text preview
         parent.bind('<Enter>', lambda e, ent=entry: self._showTextPreview(e, ent))

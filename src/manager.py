@@ -172,7 +172,7 @@ class ClipboardManager:
                     "System Restart Required",
                     f"The native Windows 'Win+V' hotkey has been {action} in the Registry.\n\n"
                     "For this change to take full effect, you must manually restart "
-                    "Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In.",
+                    "Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In (recommended).",
                     parent=self.root
                 )
                 # 4. Restore previous state
