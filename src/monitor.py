@@ -1,6 +1,7 @@
 """Clipboard monitoring service."""
 import threading
 import time
+import ctypes
 import pyperclip
 from typing import Callable
 
@@ -15,45 +16,58 @@ class ClipboardMonitor:
         self.monitoring = True
         self._monitorThread = None
         self._lastContent = None
+        self._lastSequenceNumber = 0
         self._errorCount = 0
         self._maxErrors = 10
+    
+    def _getClipboardSequenceNumber(self) -> int:
+        """Get Windows clipboard sequence number."""
+        try:
+            return ctypes.windll.user32.GetClipboardSequenceNumber()
+        except Exception:
+            return 0
     
     def _monitorLoop(self):
         """Monitor clipboard for changes."""
         print("[MONITOR] Clipboard monitoring started")
         
+        # Get initial sequence number
+        self._lastSequenceNumber = self._getClipboardSequenceNumber()
+        
         while self.monitoring:
             try:
-                # Check for image first
-                img = getClipboardImage()
-                if img:
-                    self.onContentChange(img, isImage=True)
-                    self._errorCount = 0  # Reset error count on success
-                else:
-                    # Check for text
-                    text = pyperclip.paste()
-                    if text and text.strip():
-                        self.onContentChange(text, isImage=False)
-                        self._errorCount = 0  # Reset error count on success
-                        
+                currentSequence = self._getClipboardSequenceNumber()
+                
+                # Only check clipboard if sequence number changed
+                if currentSequence != self._lastSequenceNumber:
+                    self._lastSequenceNumber = currentSequence
+                    
+                    # Check for image first
+                    img = getClipboardImage()
+                    if img:
+                        self.onContentChange(img, isImage=True)
+                        self._errorCount = 0
+                    else:
+                        # Check for text
+                        text = pyperclip.paste()
+                        if text and text.strip():
+                            self.onContentChange(text, isImage=False)
+                            self._errorCount = 0
+                            
             except KeyboardInterrupt:
-                # Allow clean shutdown
                 print("[MONITOR] Keyboard interrupt received")
                 break
             except Exception as e:
                 self._errorCount += 1
                 
-                # Only print first few errors to avoid spam
                 if self._errorCount <= 3:
                     print(f"[WARNING] Clipboard monitoring error: {e}")
                 elif self._errorCount == self._maxErrors:
                     print(f"[ERROR] Too many clipboard errors ({self._maxErrors}), suppressing further messages")
                 
-                # If too many consecutive errors, slow down polling
                 if self._errorCount > self._maxErrors:
-                    time.sleep(2)  # Slow down if having persistent issues
+                    time.sleep(2)
             
-            # Normal polling interval
             time.sleep(0.5)
         
         print("[MONITOR] Clipboard monitoring stopped")

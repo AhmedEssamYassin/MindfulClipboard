@@ -107,28 +107,11 @@ class SystemTray:
     
     def _onAbout(self, icon, item):
         """Handle about click."""
-        import tkinter as tk
-        from tkinter import messagebox
-        
-        # Create a hidden root window if needed
-        try:
-            root = tk.Tk()
-            root.withdraw()
-            
-            hotkey = "Win+V"
-            
-            messagebox.showinfo(
-                "MindfulClipboard",
-                f"Smart Clipboard Manager\n\nPress {hotkey} to open clipboard history\n\nVersion 1.0"
-            )
-            root.destroy()
-        except Exception as e:
-            # Fallback to notification if messagebox fails
-            hotkey = "Win+V"
-            self.showNotification(
-                "MindfulClipboard",
-                f"Smart Clipboard Manager\nPress {hotkey} to open clipboard history"
-            )
+        hotkey = "Win+V"
+        self.showNotification(
+            "MindfulClipboard",
+            f"Smart Clipboard Manager\nPress {hotkey} to open clipboard history"
+        )
     
     def _onQuitClick(self, icon, item):
         """Handle quit click."""

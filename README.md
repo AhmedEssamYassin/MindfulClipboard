@@ -15,10 +15,12 @@ MindfulClipboard is a smart clipboard history manager for Windows (currently), d
    * **Images**: Hover over an image entry to see a larger preview.
 * **Smart Deduplication**: Automatically ignores consecutive duplicate copies and cleans up older, non-pinned duplicates from the history.
 * **Manual Removal**: Manually remove any entry from the history.
-* **Smart UI**:
-   * The popup appears at your cursor's current location.
-   * Closes automatically on `<Escape>`, when focus is lost, or by clicking outside the window.
+* **Modern UI**: Built with PyWebView (Chromium) and HTML/CSS/JS for a stunning, responsive, and native-feeling web interface.
+* **Smart Window Management**: 
+   * The popup appears precisely at your cursor's current location.
+   * Uses a global mouse-click hook to reliably close the popup the instant you click outside of it, flawlessly bypassing restrictive Windows UIPI focus rules.
 * **Background Monitoring**: Runs as a lightweight background thread to monitor clipboard changes without interrupting your workflow.
+* **Persistent Storage**: Safely stores your clipboard history and settings in the Windows Local AppData folder to guarantee it runs perfectly without requiring Administrator privileges.
 * **Internationalization**: Automatically detects your system language and displays the interface in your preferred language (currently supports English and Arabic).
 ### Keyboard Shortcut
 
@@ -46,7 +48,14 @@ To add support for a new language:
 2. Copy the structure from `en.json` and translate all values
 3. The application will automatically detect and use the new language on systems configured for that locale
 
-## Architectural view
+## Architectural View
+
+The application has been fully modernized, transitioning from a legacy Tkinter base to a modern Chromium-backed web interface. 
+
+- **Frontend (`src/web`)**: A responsive HTML/JS/CSS application handling the UI, dynamic search, and hover previews.
+- **Backend Bridge (`src/api.py`)**: A PyWebView API layer that securely exposes native Python functionality to the JavaScript frontend.
+- **State Management (`src/history.py`)**: Handles the thread-safe queue of clipboard items, deduplication, and file I/O interactions.
+- **System Control (`src/manager.py`)**: Orchestrates the global hotkeys, Windows Registry hooks (to suppress the native Win+V), and the global mouse-hook lifecycle tracker.
 
 ### System Design (UML Diagram)
 ![UML Diagram](./docs/system%20design%20UML.svg)
@@ -73,18 +82,20 @@ python main.py
 
 ### Building Portable Executable
 
+The build process is automated via `build.py` to generate an optimized `--onedir` distribution, ensuring near-instantaneous startup times required for a background utility.
+
 1. Install build dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Build the executable:
+2. Run the automated build script:
 ```bash
 python build.py
 ```
 
-3. The executable will be in the `dist/` folder:
-   - **Windows**: `dist/MindfulClipboard.exe`
+3. The compiled application will be ready in the `dist/` folder:
+   - **Windows**: `dist/MindfulClipboard/MindfulClipboard.exe`
 
 ## Usage
 
@@ -100,11 +111,12 @@ The application will start in the background with a system tray icon.
 * Python 3.7+
 * Windows 10/11
 * Required Python packages (see `requirements.txt`):
-  * Pillow - Image processing
+  * pywebview - Chromium web UI engine
+  * Pillow - Image processing and thumbnail generation
   * pyperclip - Clipboard operations
-  * keyboard - Keyboard hotkey handling
-  * pywin32 - Windows clipboard (Windows only)
-  * pystray - System tray icon
+  * keyboard - Global keyboard hotkey hooking
+  * pywin32 - Windows registry and low-level API bindings
+  * pystray - System tray icon management
 
 ## Platform-Specific Notes
 
@@ -115,12 +127,12 @@ The application will start in the background with a system tray icon.
 
 ## Troubleshooting
 
-### Windows: Icon doesn't appear in build
-Make sure you have `assets/images/icon.ico` file. Convert PNG to ICO using online tools.
+### Windows: Application doesn't start or immediately crashes
+Ensure that PyWebView is correctly bundling the web assets. If running from source, ensure the `src/web/` directory is present. If running the compiled executable, ensure you haven't moved `MindfulClipboard.exe` outside of its generated `dist/MindfulClipboard/` folder, as it relies on the bundled assets in that directory.
 
 ### Application doesn't start on boot
 - **Windows**: Check the Startup folder: `shell:startup`
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the MIT License, for more details see the [LICENSE](LICENSE) file.

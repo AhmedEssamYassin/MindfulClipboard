@@ -62,13 +62,15 @@ def getCommonArgs():
     
     if LOCALES_DIR.exists():
         args.append(f'--add-data={LOCALES_DIR};locales')
+        
+    WEB_DIR = PROJECT_ROOT / "src" / "web"
+    if WEB_DIR.exists():
+        args.append(f'--add-data={WEB_DIR};src/web')
 
     # Hidden Imports (Explicitly include dependencies to prevent runtime errors)
-    hidden_imports = [
+    hiddenImports = [
         'pystray',
         'PIL',
-        'PIL._imagingtk',
-        'PIL._tkinter_finder',
         'win32clipboard',
         'win32con',
         'win32api',
@@ -76,10 +78,12 @@ def getCommonArgs():
         'win32com',
         'win32com.client',
         'keyboard',
-        'darkdetect'
+        'darkdetect',
+        'webview',
+        'webview.platforms.winforms'
     ]
     
-    for module in hidden_imports:
+    for module in hiddenImports:
         args.append(f'--hidden-import={module}')
 
     return args
@@ -128,12 +132,11 @@ def main():
     # Ensure we are on Windows for this script
     if sys.platform != 'win32':
         print("[WARNING] This script is optimized for Windows. Linux builds may fail.")
-        # Attempt to set encoding anyway
     
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except:
-        pass
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception as e:
+        print(f"Could not configure stdout: {e}")
 
     try:
         while True:

@@ -1,8 +1,9 @@
 darkdetect==0.8.0
 keyboard==0.13.5
-Pillow==12.1.1
-PyInstaller==6.18.0
+Pillow==12.2.0
+PyInstaller==6.19.0
 pyperclip==1.11.0
 pystray==0.19.5
 pywin32==311
 winshell==0.6
+pywebview==6.2.1

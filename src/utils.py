@@ -18,10 +18,18 @@ def calculateHash(content: Union[str, Image.Image]) -> str:
     """Calculate hash of content for duplicate detection."""
     if isinstance(content, str):
         return hashlib.sha256(content.encode()).hexdigest()
-    else:  # Image
-        imgBytes = io.BytesIO()
-        content.save(imgBytes, format='PNG')
-        return hashlib.sha256(imgBytes.getvalue()).hexdigest()
+    else:
+        return hashlib.sha256(content.tobytes()).hexdigest()
+
+def getAppDataDir() -> Path:
+    """Get the correct directory for storing user data."""
+    import os
+    appData = os.getenv('LOCALAPPDATA')
+    if not appData:
+        appData = os.path.expanduser('~')
+    appDir = Path(appData) / "MindfulClipboard"
+    appDir.mkdir(parents=True, exist_ok=True)
+    return appDir
 
 
 def getClipboardImage() -> Optional[Image.Image]:
@@ -30,30 +38,33 @@ def getClipboardImage() -> Optional[Image.Image]:
         img = ImageGrab.grabclipboard()
         if isinstance(img, Image.Image):
             return img
-    except:
-        pass
+    except Exception as e:
+        print(f"Failed to get clipboard image: {e}")
     return None
 
 
 def copyImageToClipboard(image: Image.Image) -> None:
     """Copy image to Windows clipboard."""
     output = io.BytesIO()
-    image.convert('RGB').save(output, 'BMP')
-    data = output.getvalue()[14:]  # Remove BMP header
+    image.convert("RGB").save(output, "BMP")
+    data = output.getvalue()[14:]
     output.close()
     
     win32clipboard.OpenClipboard()
-    win32clipboard.EmptyClipboard()
-    win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
-    win32clipboard.CloseClipboard()
+    try:
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+    finally:
+        win32clipboard.CloseClipboard()
 
 def isInStartup() -> bool:
     """Check if app is in startup folder."""
     if not STARTUP_AVAILABLE: return False
     try:
         startupFolder = Path(winshell.startup())
-        return (startupFolder / 'MindfulClipboard.lnk').exists()
-    except:
+        return (startupFolder / "MindfulClipboard.lnk").exists()
+    except Exception as e:
+        print(f"Failed to check startup: {e}")
         return False
 
 def addToStartup() -> bool:
@@ -99,9 +110,10 @@ def removeFromStartup() -> bool:
     if not STARTUP_AVAILABLE: return False
     try:
         startupFolder = Path(winshell.startup())
-        shortcutPath = startupFolder / 'MindfulClipboard.lnk'
+        shortcutPath = startupFolder / "MindfulClipboard.lnk"
         if shortcutPath.exists():
             shortcutPath.unlink()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Failed to remove from startup: {e}")
         return False

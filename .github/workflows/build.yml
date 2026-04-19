@@ -49,6 +49,17 @@ jobs:
           }
         shell: pwsh
 
+      - name: Verify web frontend folder
+        run: |
+          if (Test-Path "src/web") {
+            Write-Host "[OK] Web folder found"
+            Get-ChildItem -Path src/web -Recurse | Select-Object FullName
+          } else {
+            Write-Host "[ERROR] Web folder not found!"
+            exit 1
+          }
+        shell: pwsh
+
       - name: Run PyInstaller build
         run: echo "2" | python build.py
         shell: pwsh
