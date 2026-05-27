@@ -1,19 +1,24 @@
+"""Dependency update utility for MindfulClipboard."""
+import importlib.metadata
 import subprocess
 import sys
-import importlib.metadata
+
 
 def getPackageName(line):
+    """Extract the package name from a requirements line."""
     line = line.strip()
-    if not line or line.startswith('#'):
+    if not line or line.startswith("#"):
         return None
-    return line.split('==')[0].split('>=')[0].split('<=')[0].split('>')[0].split('<')[0].strip()
+    return line.split("==")[0].split(">=")[0].split("<=")[0].split(">")[0].split("<")[0].strip()
+
 
 def updateAllDeps():
+    """Upgrade all dependencies listed in requirements.txt and update their versions."""
     print("Reading requirements.txt...")
     
     packages = []
     try:
-        with open("requirements.txt", "r") as f:
+        with open("requirements.txt", "r", encoding="utf-8") as f:
             for line in f:
                 pkg = getPackageName(line)
                 if pkg:
@@ -41,7 +46,7 @@ def updateAllDeps():
             except importlib.metadata.PackageNotFoundError:
                 print(f"   Could not find installed version for {pkg}, skipping...")
 
-        with open("requirements.txt", "w") as f:
+        with open("requirements.txt", "w", encoding="utf-8") as f:
             f.write("\n".join(newLines))
             f.write("\n")
             
@@ -51,6 +56,7 @@ def updateAllDeps():
         print(f"\nFailed to upgrade packages: {e}")
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}")
+
 
 if __name__ == "__main__":
     updateAllDeps()

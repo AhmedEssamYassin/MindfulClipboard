@@ -1,18 +1,20 @@
 """Main application controller for MindfulClipboard."""
-import os
-import sys
-import json
-import pathlib
 import ctypes
-import winreg
-import keyboard
+import json
+import os
+import pathlib
+import sys
 import threading
+import time
+import winreg
 
+import keyboard
+
+from .api import ClipboardApi
 from .history import ClipboardHistory
+from .i18n import initI18n
 from .monitor import ClipboardMonitor
 from .utils import addToStartup, removeFromStartup
-from .i18n import initI18n
-from .api import ClipboardApi
 
 class ClipboardManager:
     """Main clipboard manager coordinating all components."""
@@ -57,7 +59,8 @@ class ClipboardManager:
         try:
             import darkdetect
             return darkdetect.isDark()
-        except:
+        except Exception as e:
+            print(f"System theme detection failed: {e}")
             return True
     
     def setTheme(self, isDark):
@@ -96,8 +99,8 @@ class ClipboardManager:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, keyPath, 0, winreg.KEY_SET_VALUE)
             winreg.SetValueEx(key, "EnableClipboardHistory", 0, winreg.REG_DWORD, 1 if enable else 0)
             winreg.CloseKey(key)
-        except:
-            pass
+        except Exception as e:
+            print(f"Failed to set system history service state: {e}")
 
     def _getSystemHistoryState(self):
         """Read current state of Windows Clipboard History."""
@@ -107,10 +110,11 @@ class ClipboardManager:
             val, _ = winreg.QueryValueEx(key, "EnableClipboardHistory")
             winreg.CloseKey(key)
             return val
-        except:
+        except Exception as e:
+            print(f"Failed to read system history service state: {e}")
             return 1
 
-    def _modifyNativeHotkey(self, disable):
+    def _modifyNativeHotkey(self, disable, showAlert=True):
         """Edits 'DisabledHotkeys' in Registry."""
         keyPath = r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
         changeMade = False
@@ -139,18 +143,19 @@ class ClipboardManager:
             if changeMade:
                 winreg.SetValueEx(key, "DisabledHotkeys", 0, winreg.REG_SZ, newVal)
                 action = "disabled" if disable else "restored"
-                ctypes.windll.user32.MessageBoxW(
-                    0, 
-                    f"The native Windows 'Win+V' hotkey has been {action} in the Registry.\n\nFor this change to take full effect, you must manually restart Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In.", 
-                    "System Restart Required", 
-                    0x40 | 0x40000 # MB_ICONINFORMATION | MB_TOPMOST
-                )
+                if showAlert:
+                    ctypes.windll.user32.MessageBoxW(
+                        0, 
+                        f"The native Windows 'Win+V' hotkey has been {action} in the Registry.\n\nFor this change to take full effect, you must manually restart Windows Explorer (Task Manager > Restart Explorer) or Sign Out/In.", 
+                        "System Restart Required", 
+                        0x40 | 0x40000 # MB_ICONINFORMATION | MB_TOPMOST
+                    )
             winreg.CloseKey(key)
         except Exception as e:
             print(f"[WARNING] Registry access failed: {e}")
             
     def _getLocalesPath(self):
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             basePath = sys._MEIPASS
         else:
             basePath = os.path.abspath(os.path.dirname(__file__)).rsplit(os.sep, 1)[0]
@@ -159,10 +164,6 @@ class ClipboardManager:
     def _startFocusTracker(self):
         """Poll global mouse state. If the user clicks anywhere outside the 
         popup window's bounding box, close the popup. This completely bypasses OS focus rules."""
-        import threading
-        import time
-        import ctypes
-        
         self._isPopupOpen = False
         self._showGraceUntil = 0
         
@@ -175,19 +176,19 @@ class ClipboardManager:
         def track():
             while True:
                 time.sleep(0.02) # 20ms polling is fast enough to catch clicks, low CPU overhead
-                if getattr(self, '_isPopupOpen', False) and self.window and time.time() > self._showGraceUntil:
-                    l_state = ctypes.windll.user32.GetAsyncKeyState(VK_LBUTTON)
-                    r_state = ctypes.windll.user32.GetAsyncKeyState(VK_RBUTTON)
+                if getattr(self, "_isPopupOpen", False) and self.window and time.time() > self._showGraceUntil:
+                    lState = ctypes.windll.user32.GetAsyncKeyState(VK_LBUTTON)
+                    rState = ctypes.windll.user32.GetAsyncKeyState(VK_RBUTTON)
                     
                     # 0x8000 checks if the button is currently held down
-                    if (l_state & 0x8000) or (r_state & 0x8000):
+                    if (lState & 0x8000) or (rState & 0x8000):
                         pt = POINT()
                         ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
                         
-                        if hasattr(self, '_popupRect'):
+                        if hasattr(self, "_popupRect"):
                             rect = self._popupRect
                             # Check if click is inside the popup's known screen coordinates
-                            if not (rect['x'] <= pt.x <= rect['x'] + 420 and rect['y'] <= pt.y <= rect['y'] + 540):
+                            if not (rect["x"] <= pt.x <= rect["x"] + 420 and rect["y"] <= pt.y <= rect["y"] + 540):
                                 self.closePopupWeb()
                                 # Add a tiny delay so we don't trigger multiple closes for a long click
                                 time.sleep(0.2)
@@ -208,8 +209,8 @@ class ClipboardManager:
         if self.window:
             try:
                 self.window.evaluate_js("refreshData()")
-            except:
-                pass
+            except Exception as e:
+                print(f"Failed to refresh frontend: {e}")
     
     def _registerHotkey(self):
         try:
@@ -220,8 +221,6 @@ class ClipboardManager:
     
     def showPopup(self):
         """Toggle the popup: if already open, close it."""
-        import time
-        
         if not self.window:
             return
         
@@ -233,13 +232,13 @@ class ClipboardManager:
         # Release modifier keys (Win key) before showing
         # The OS sometimes holds the Win key logically, which prevents our window from getting focus
         try:
-            keyboard.send('ctrl')
-        except:
-            pass
+            keyboard.send("ctrl")
+        except Exception as e:
+            print(f"Failed to send control modifier: {e}")
             
         # Debounce: ignore rapid-fire calls within 300ms (keyboard lib can double-fire because of the synthetic 'ctrl' press)
         now = time.time()
-        if now - getattr(self, '_lastShowTime', 0) < 0.3:
+        if now - getattr(self, "_lastShowTime", 0) < 0.3:
             return
         self._lastShowTime = now
         
@@ -262,7 +261,7 @@ class ClipboardManager:
         self.window.move(x, y)
         self.window.show()
         self._isPopupOpen = True
-        self._popupRect = {'x': x, 'y': y}
+        self._popupRect = {"x": x, "y": y}
         
         # Give user 0.3 seconds before the click tracker starts listening
         self._showGraceUntil = time.time() + 0.3
@@ -279,8 +278,12 @@ class ClipboardManager:
         self.monitor.stop()
         try:
             keyboard.unhook_all()
-        except:
-            pass
-        self._modifyNativeHotkey(disable=False)
-        if hasattr(self, 'originalHistoryState') and self.originalHistoryState == 1:
+        except Exception as e:
+            print(f"Failed to unhook keyboard: {e}")
+        self._modifyNativeHotkey(disable=False, showAlert=False)
+        if hasattr(self, "originalHistoryState") and self.originalHistoryState == 1:
             self._setSystemHistory(True)
+        try:
+            removeFromStartup()
+        except Exception as e:
+            print(f"Failed to remove from startup: {e}")

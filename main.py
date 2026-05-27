@@ -1,11 +1,12 @@
 """Main entry point for the Clipboard Manager application."""
-import sys
 import os
+import sys
 import threading
+import time
+
 import webview
 
 from src.manager import ClipboardManager
-
 
 def getHtmlPath():
     if getattr(sys, "frozen", False):
@@ -13,7 +14,6 @@ def getHtmlPath():
     else:
         basePath = os.path.abspath(os.path.dirname(__file__))
     return os.path.join(basePath, "src", "web", "index.html")
-
 
 def main():
     manager = ClipboardManager()
@@ -49,7 +49,6 @@ def main():
     window.events.closing += onClosing
     
     def startMonitorLoop():
-        import time
         while True:
             time.sleep(0.5)
     
@@ -75,12 +74,11 @@ def main():
     tray = SystemTray(onQuit=onQuit, onShow=onShow, assetsDir=assetsPath)
     tray.start()
     
-    import time
     time.sleep(1.0)
     if manager.i18n:
         tray.showNotification(
-            title=manager.i18n.t('app_name', 'MindfulClipboard'),
-            message=manager.i18n.t('tray_started', 'Press Win+V to open clipboard history')
+            title=manager.i18n.t("app_name", "MindfulClipboard"),
+            message=manager.i18n.t("tray_started", "Press Win+V to open clipboard history")
         )
     
     try:

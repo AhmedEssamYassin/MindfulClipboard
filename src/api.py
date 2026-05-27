@@ -1,17 +1,19 @@
 """Python API bridge for web UI."""
-import os
+import base64
 import json
+import os
 import threading
-import webview
+from io import BytesIO
+
 import keyboard
+import pyperclip
+import webview
 
 from .history import ClipboardHistory
-from .monitor import ClipboardMonitor
-from .utils import copyImageToClipboard, addToStartup, removeFromStartup
-from .i18n import initI18n, getI18n
+from .i18n import getI18n, initI18n
 from .models import ClipboardEntry
-
-import pyperclip
+from .monitor import ClipboardMonitor
+from .utils import addToStartup, copyImageToClipboard, removeFromStartup
 
 
 class ClipboardApi:
@@ -38,13 +40,11 @@ class ClipboardApi:
             }
             if entry.isImage:
                 try:
-                    import base64
-                    from io import BytesIO
                     buffered = BytesIO()
                     # Create a small thumbnail to keep JSON payload lightweight
                     img = entry.content.copy()
-                    if img.mode not in ('RGB', 'RGBA'):
-                        img = img.convert('RGBA')
+                    if img.mode not in ("RGB", "RGBA"):
+                        img = img.convert("RGBA")
                     img.thumbnail((800, 800))
                     img.save(buffered, format="PNG")
                     imgStr = base64.b64encode(buffered.getvalue()).decode("utf-8")
@@ -94,10 +94,14 @@ class ClipboardApi:
             return True
         return False
     
+    def getTheme(self):
+        """Get the saved theme preference."""
+        return self._manager.isDarkMode
+
     def setTheme(self, isDark):
         """Save theme preference."""
         self._manager.setTheme(isDark)
-    
+
     def closeWindow(self):
         """Close the popup window."""
         self._manager.closePopupWeb()

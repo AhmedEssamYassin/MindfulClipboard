@@ -1,12 +1,12 @@
 """Clipboard monitoring service."""
+import ctypes
 import threading
 import time
-import ctypes
-import pyperclip
 from typing import Callable
 
-from .utils import getClipboardImage
+import pyperclip
 
+from .utils import getClipboardImage
 
 class ClipboardMonitor:
     """Monitors clipboard for changes and triggers callbacks."""

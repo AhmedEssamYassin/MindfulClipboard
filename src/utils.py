@@ -1,9 +1,11 @@
 """Utility functions for clipboard operations."""
 import hashlib
 import io
+import os
 import sys
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
+
 from PIL import Image, ImageGrab
 import win32clipboard
 
@@ -23,14 +25,12 @@ def calculateHash(content: Union[str, Image.Image]) -> str:
 
 def getAppDataDir() -> Path:
     """Get the correct directory for storing user data."""
-    import os
-    appData = os.getenv('LOCALAPPDATA')
+    appData = os.getenv("LOCALAPPDATA")
     if not appData:
-        appData = os.path.expanduser('~')
+        appData = os.path.expanduser("~")
     appDir = Path(appData) / "MindfulClipboard"
     appDir.mkdir(parents=True, exist_ok=True)
     return appDir
-
 
 def getClipboardImage() -> Optional[Image.Image]:
     """Get image from clipboard if available."""
@@ -41,7 +41,6 @@ def getClipboardImage() -> Optional[Image.Image]:
     except Exception as e:
         print(f"Failed to get clipboard image: {e}")
     return None
-
 
 def copyImageToClipboard(image: Image.Image) -> None:
     """Copy image to Windows clipboard."""
@@ -72,10 +71,10 @@ def addToStartup() -> bool:
     if not STARTUP_AVAILABLE: return False
     try:
         startupFolder = Path(winshell.startup())
-        shortcutPath = startupFolder / 'MindfulClipboard.lnk'
+        shortcutPath = startupFolder / "MindfulClipboard.lnk"
         
         # Determine paths based on how we are running (Frozen exe vs Python script)
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             target = sys.executable
             args = ""
             cwd = str(Path(sys.executable).parent)
@@ -84,15 +83,15 @@ def addToStartup() -> bool:
             # Running from source
             # Find pythonw.exe to run without console
             pyDir = Path(sys.executable).parent
-            pythonw = pyDir / 'pythonw.exe'
+            pythonw = pyDir / "pythonw.exe"
             target = str(pythonw if pythonw.exists() else sys.executable)
             
-            scriptPath = Path(__file__).parent.parent / 'main.py'
-            args = f'"{scriptPath.resolve()}"'
+            scriptPath = Path(__file__).parent.parent / "main.py"
+            args = f"\"{scriptPath.resolve()}\""
             cwd = str(scriptPath.parent)
             icon = sys.executable
 
-        shell = Dispatch('WScript.Shell')
+        shell = Dispatch("WScript.Shell")
         shortcut = shell.CreateShortCut(str(shortcutPath))
         shortcut.Targetpath = target
         shortcut.Arguments = args

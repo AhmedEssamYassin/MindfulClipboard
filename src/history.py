@@ -1,10 +1,11 @@
 """Clipboard history management."""
-import threading
-import json
 import io
-from pathlib import Path
-from typing import List, Union, Optional
+import json
+import threading
 from datetime import datetime
+from pathlib import Path
+from typing import List, Optional, Union
+
 from PIL import Image
 
 from .models import ClipboardEntry
@@ -13,7 +14,6 @@ from .i18n import getI18n
 
 HISTORY_FILE = getAppDataDir() / "history.json"
 HISTORY_IMAGES_DIR = getAppDataDir() / "history_images"
-
 
 class ClipboardHistory:
     """Manages clipboard history with deduplication and pinning."""
@@ -198,8 +198,3 @@ class ClipboardHistory:
                 self.lastHash = self.history[0].contentHash
         except Exception as e:
             print(f"Failed to load history: {e}")
-
-    def getImagePath(self, contentHash: str) -> str:
-        """Get the file path for a cached image by hash."""
-        imgPath = HISTORY_IMAGES_DIR / f"{contentHash}.png"
-        return str(imgPath) if imgPath.exists() else ""

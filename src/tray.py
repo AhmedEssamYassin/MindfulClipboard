@@ -1,12 +1,15 @@
 """System tray icon for MindfulClipboard."""
 import sys
+import threading
 from pathlib import Path
 from typing import Callable, Optional
+
 from PIL import Image
 import pystray
 from pystray import MenuItem as item
+
 from .i18n import I18n
-from .utils import addToStartup, removeFromStartup, isInStartup
+from .utils import addToStartup, isInStartup, removeFromStartup
 
 class SystemTray:
     """Manages the system tray icon and menu."""
@@ -23,8 +26,8 @@ class SystemTray:
         """Load the tray icon image."""
         # Try to load from assets
         iconPaths = [
-            self.assetsDir / 'images' / 'icon.png',
-            self.assetsDir / 'images' / 'tray_icon.png',
+            self.assetsDir / "images" / "icon.png",
+            self.assetsDir / "images" / "tray_icon.png",
         ]
         
         for iconPath in iconPaths:
@@ -39,12 +42,12 @@ class SystemTray:
         from PIL import ImageDraw
         
         # Create 64x64 icon with clipboard symbol
-        img = Image.new('RGB', (64, 64), color='#2196F3')
+        img = Image.new("RGB", (64, 64), color="#2196F3")
         draw = ImageDraw.Draw(img)
         
         # Draw simple clipboard shape
-        draw.rectangle([16, 12, 48, 52], fill='white', outline='#1976D2', width=2)
-        draw.rectangle([24, 8, 40, 16], fill='#1976D2')
+        draw.rectangle([16, 12, 48, 52], fill="white", outline="#1976D2", width=2)
+        draw.rectangle([24, 8, 40, 16], fill="#1976D2")
         
         return img
     
@@ -53,18 +56,18 @@ class SystemTray:
         if isInStartup():
             removeFromStartup()
             self.showNotification(
-                title=self.i18n.t('app_name', 'MindfulClipboard'),
+                title=self.i18n.t("app_name", "MindfulClipboard"),
                 message="Auto-Start: Disabled from system startup"
             )
         else:
             if addToStartup():
                 self.showNotification(
-                    title=self.i18n.t('app_name', 'MindfulClipboard'),
+                    title=self.i18n.t("app_name", "MindfulClipboard"),
                     message="Auto-Start: Enabled from system startup"
                 )
             else:
                 self.showNotification(
-                    title=self.i18n.t('app_name', 'MindfulClipboard'),
+                    title=self.i18n.t("app_name", "MindfulClipboard"),
                     message="Error: Could not enable auto-start"
                 )
         
@@ -77,12 +80,12 @@ class SystemTray:
         
         # Show window option (if callback provided)
         if self.onShow:
-            showText = self.i18n.t('tray_show') if self.i18n else 'Open Clipboard'
+            showText = self.i18n.t("tray_show") if self.i18n else "Open Clipboard"
             menuItems.append(item(showText, self._onShowClick))
             menuItems.append(pystray.Menu.SEPARATOR)
         
         # Auto-start toggle (only show if supported)
-        startupText = self.i18n.t('tray_autostart') if self.i18n else 'Run on Startup'
+        startupText = self.i18n.t("tray_autostart") if self.i18n else "Run on Startup"
         menuItems.append(item(
             startupText,
             self._toggleStartup,
@@ -91,11 +94,11 @@ class SystemTray:
         menuItems.append(pystray.Menu.SEPARATOR)
         
         # About option
-        aboutText = self.i18n.t('tray_about') if self.i18n else 'About'
+        aboutText = self.i18n.t("tray_about") if self.i18n else "About"
         menuItems.append(item(aboutText, self._onAbout))
         
         # Quit option
-        quitText = self.i18n.t('tray_quit') if self.i18n else 'Quit'
+        quitText = self.i18n.t("tray_quit") if self.i18n else "Quit"
         menuItems.append(item(quitText, self._onQuitClick))
         
         return tuple(menuItems)
@@ -120,7 +123,6 @@ class SystemTray:
             self.icon.visible = False
         
         # Schedule quit callback after a short delay to allow menu to close
-        import threading
         def delayedQuit():
             self.stop()
             if self.onQuit:
@@ -137,11 +139,11 @@ class SystemTray:
         
         # Create icon
         iconImage = self._getIcon()
-        title = self.i18n.t('app_name') if self.i18n else 'MindfulClipboard'
+        title = self.i18n.t("app_name") if self.i18n else "MindfulClipboard"
         menu = self._createMenu()
         
         self.icon = pystray.Icon(
-            name='MindfulClipboard',
+            name="MindfulClipboard",
             icon=iconImage,
             title=title,
             menu=menu

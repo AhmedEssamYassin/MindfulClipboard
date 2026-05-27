@@ -216,6 +216,9 @@ document.addEventListener('keydown', (e) => {
         } else if (e.key === 'Enter') {
             e.preventDefault();
             copyEntry(selectedIndex);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeWindow();
         }
         return;
     }
@@ -257,6 +260,11 @@ themeToggle.addEventListener('click', toggleTheme);
 window.addEventListener('pywebviewready', async function() {
     try {
         imageLabelText = await window.pywebview.api.getImageLabel();
+    } catch(e) {}
+    try {
+        isDarkMode = await window.pywebview.api.getTheme();
+        document.body.classList.toggle('light', !isDarkMode);
+        themeToggle.innerHTML = isDarkMode ? '\uE708' : '\uE706';
     } catch(e) {}
     await loadHistory();
 });
